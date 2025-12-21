@@ -1,35 +1,146 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import React, {useEffect, useRef, useState} from 'react';
+import type {Alert, SystemState} from './types';
+import {scenarioEvents} from './data/scenario';
+import AlertsPanel from './components/AlertsPanel';
+import ActionPanel from './components/ActionPanel';
+import StatusPanel from './components/StatusPanel.tsx';
+import ScorePanel from './components/ScorePanel';
+import MetricGraph from './components/MetricGraph';
+import type {MetricPoint} from './types';
 
-function App() {
-  const [count, setCount] = useState(0)
 
-  return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
-  )
-}
+let alertId = 0;
 
-export default App
+const App: React.FC = () => {
+    const [alerts, setAlerts] = useState<Alert[]>([]);
+    const [system, setSystem] = useState<SystemState>({
+        stability: 100,
+        trustLevel: 100,
+        score: 0,
+    });
+    const [finished, setFinished] = useState(false);
+    const [metrics, setMetrics] = useState<MetricPoint[]>([]);
+    const systemRef = useRef(system);
+
+    // keep ref synced so interval can read latest values without re-creating
+    useEffect(() => {
+        systemRef.current = system;
+    }, [system]);
+
+    useEffect(() => {
+        const interval = setInterval(() => {
+            setMetrics(prev => [
+                ...prev.slice(-240), // keep last ~240 points (120s at 500ms)
+                {
+                    time: Date.now(), // absolute timestamp
+                    stability: systemRef.current.stability,
+                    trust: systemRef.current.trustLevel,
+                },
+            ]);
+        }, 500); // sample every 500ms
+
+        return () => clearInterval(interval);
+    }, []);
+
+
+    useEffect(() => {
+        // Track timeout IDs so we can clear them on cleanup.
+        const timers: number[] = [];
+
+        scenarioEvents.forEach(event => {
+            const id = window.setTimeout(() => {
+                // Use functional updates to avoid stale closures and prevent double additions
+                setAlerts(prev => [
+                    ...prev,
+                    {
+                        id: ++alertId,
+                        severity: event.severity,
+                        message: event.message,
+                        recommendedAction: event.recommendedAction,
+                        acknowledged: false,
+                    },
+                ]);
+
+                // Update system and then record metrics using the updated state values
+                setSystem(prev => {
+                    const next = {
+                        ...prev,
+                        stability: Math.max(0, prev.stability - 10),
+                        trustLevel: Math.max(0, prev.trustLevel - 15),
+                    };
+
+                    setMetrics(mPrev => [
+                        ...mPrev,
+                        {
+                            time: Date.now(),
+                            stability: next.stability,
+                            trust: next.trustLevel,
+                        },
+                    ]);
+
+                    return next;
+                });
+
+            }, event.time);
+
+            timers.push(id);
+        });
+
+        const finishId = window.setTimeout(() => setFinished(true), 150000); // finish after 150s
+        timers.push(finishId);
+
+        return () => {
+            // Clear any scheduled timeouts when the effect is cleaned up (React StrictMode mounts/unmounts in dev)
+            timers.forEach(t => clearTimeout(t));
+        };
+    }, []);
+
+    const acknowledgeAlert = (id: number) => {
+        setAlerts(prev =>
+            prev.map(a =>
+                a.id === id ? {...a, acknowledged: true} : a
+            )
+        );
+    };
+
+    const performAction = (action: string) => {
+        setMetrics(prev => [
+            ...prev,
+            {
+                time: Date.now(),
+                stability: system.stability,
+                trust: system.trustLevel,
+            },
+        ]);
+
+        switch(action) {
+            case 'rotate':
+                setSystem(s => ({...s, trustLevel: s.trustLevel + 20, score: s.score + 10}));
+                break;
+
+            case 'limit':
+                setSystem(s => ({...s, stability: s.stability + 15, score: s.score + 10}));
+                break;
+
+            case 'escalate':
+                setSystem(s => ({...s, score: s.score + 5}));
+                break;
+        }
+    };
+
+    return (
+        <div className="app">
+            <h1>Q-Ready: Post-Quantum Grid Incident Simulation</h1>
+
+            <MetricGraph data={metrics} />
+            <StatusPanel system={system}/>
+            <ActionPanel onAction={performAction}/>
+
+            <AlertsPanel alerts={alerts} onAcknowledge={acknowledgeAlert}/>
+
+            {finished && <ScorePanel score={system.score}/>}
+        </div>
+    );
+};
+
+export default App;
