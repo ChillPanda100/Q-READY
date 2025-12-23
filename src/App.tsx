@@ -96,11 +96,9 @@ const App: React.FC = () => {
     }, []);
 
     const acknowledgeAlert = (id: number) => {
-        setAlerts(prev =>
-            prev.map(a =>
-                a.id === id ? {...a, acknowledged: true} : a
-            )
-        );
+        // Remove the acknowledged alert from the list so it disappears from the UI
+        // and remaining alerts shift up to fill the gap.
+        setAlerts(prev => prev.filter(a => a.id !== id));
     };
 
     const performAction = (action: string) => {

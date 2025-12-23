@@ -141,6 +141,11 @@ button:active {
             inset 0 1px 0 rgba(255, 255, 255, 0.03);
 
     animation: slideIn 0.45s cubic-bezier(0.25, 0.8, 0.25, 1);
+    /* Use max-height to allow smooth collapse from a known upper bound to 0 */
+    max-height: 260px; /* large enough for content */
+    overflow: hidden; /* needed for collapsing */
+    /* Split transitions so slide happens first (transform/opacity), then collapse (max-height/padding/margin) */
+    transition: transform 260ms cubic-bezier(0.25,0.8,0.25,1), opacity 260ms ease, max-height 160ms ease, padding 160ms ease, margin 160ms ease;
 }
 
 .alert-card strong {
@@ -180,6 +185,23 @@ button:active {
 .alert-card.acknowledged {
     opacity: 0.55;
     filter: saturate(0.7);
+}
+
+/* Closing state: slide out and collapse height so remaining alerts slide smoothly */
+.alert-card.closing {
+    /* slide horizontally off-screen and fade out; keep original max-height so
+       neighbors remain in place until we collapse */
+    transform: translateX(120%);
+    opacity: 0;
+}
+
+/* Collapsed state reduces max-height/padding/margin so the gap closes and
+   other alerts slide down smoothly. overflow is kept hidden on the card. */
+.alert-card.collapsed {
+    max-height: 0 !important;
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+    margin: 0 !important;
 }
 
 /* --------------------

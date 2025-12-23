@@ -1,4 +1,4 @@
-import React from 'react';
+import React, {useState, useRef, useEffect} from 'react';
 import type {Alert} from '../types';
 
 interface Props {
@@ -6,22 +6,61 @@ interface Props {
     onAcknowledge: (id: number) => void;
 }
 
+// Timings are split to first slide horizontally, then collapse height so
+// neighboring alerts animate downward smoothly. Keep these in sync with CSS.
+const SLIDE_MS = 260;
+const COLLAPSE_MS = 160;
+const TOTAL_MS = SLIDE_MS + COLLAPSE_MS;
+
 const AlertsPanel: React.FC<Props> = ({ alerts, onAcknowledge }) => {
+    const [closingIds, setClosingIds] = useState<number[]>([]);
+    const [collapsedIds, setCollapsedIds] = useState<number[]>([]);
+    const timersRef = useRef<number[]>([]);
+
+    useEffect(() => {
+        return () => {
+            // clear any pending timeouts on unmount
+            timersRef.current.forEach(t => clearTimeout(t));
+        };
+    }, []);
+
+    const handleAcknowledge = (id: number) => {
+        if (closingIds.includes(id)) return; // already in progress
+
+        // Phase 1: mark as closing to trigger horizontal slide (transform/opacity)
+        setClosingIds(prev => [...prev, id]);
+
+        // After the slide finishes, collapse height/padding to allow other alerts to slide down
+        const t1 = window.setTimeout(() => {
+            setCollapsedIds(prev => [...prev, id]);
+        }, SLIDE_MS);
+
+        // After collapse, notify parent to remove the alert from state
+        const t2 = window.setTimeout(() => {
+            onAcknowledge(id);
+            setClosingIds(prev => prev.filter(x => x !== id));
+            setCollapsedIds(prev => prev.filter(x => x !== id));
+            // remove timers for this id
+        }, TOTAL_MS);
+
+        timersRef.current.push(t1, t2);
+    };
+
     return (
         <div className="alerts-container">
             {alerts.map(alert => (
                 <div
                     key={alert.id}
                     className={`alert-card ${alert.severity} ${
-                        alert.acknowledged ? 'acknowledged' : ''
-                    }`}
+                        closingIds.includes(alert.id) ? 'closing' : ''
+                    } ${collapsedIds.includes(alert.id) ? 'collapsed' : ''}`}
                 >
                     <strong>{alert.severity.toUpperCase()}</strong>
                     <p>{alert.message}</p>
                     <small>{alert.recommendedAction}</small>
 
-                    {!alert.acknowledged && (
-                        <button onClick={() => onAcknowledge(alert.id)}>
+                    {!closingIds.includes(alert.id) && (
+                        <button onClick={() => handleAcknowledge(alert.id)}>
                             Acknowledge
                         </button>
                     )}
