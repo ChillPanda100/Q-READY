@@ -7,11 +7,13 @@ import StatusPanel from './components/StatusPanel.tsx';
 import ScorePanel from './components/ScorePanel';
 import MetricGraph from './components/MetricGraph';
 import type {MetricPoint} from './types';
+import TitlePage from './components/TitlePage';
 
 
 let alertId = 0;
 
 const App: React.FC = () => {
+    const [started, setStarted] = useState<boolean>(false);
     const [alerts, setAlerts] = useState<Alert[]>([]);
     const [system, setSystem] = useState<SystemState>({
         stability: 100,
@@ -126,17 +128,25 @@ const App: React.FC = () => {
         }
     };
 
+    const handleStart = () => setStarted(true);
+
     return (
         <div className="app">
             <h1>Q-Ready: Post-Quantum Grid Incident Simulation</h1>
 
-            <MetricGraph data={metrics} />
-            <StatusPanel system={system}/>
-            <ActionPanel onAction={performAction}/>
+            {!started ? (
+                <TitlePage onStart={handleStart} />
+            ) : (
+                <>
+                    <MetricGraph data={metrics} />
+                    <StatusPanel system={system}/>
+                    <ActionPanel onAction={performAction}/>
 
-            <AlertsPanel alerts={alerts} onAcknowledge={acknowledgeAlert}/>
+                    <AlertsPanel alerts={alerts} onAcknowledge={acknowledgeAlert}/>
 
-            {finished && <ScorePanel score={system.score}/>}
+                    {finished && <ScorePanel score={system.score}/>}
+                </>
+            )}
         </div>
     );
 };
