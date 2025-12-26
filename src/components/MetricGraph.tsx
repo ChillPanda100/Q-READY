@@ -123,9 +123,14 @@ const MetricGraph: React.FC<Props> = ({data}) => {
             <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
                 <h2 style={{margin: 0}}>Live System Metrics</h2>
                 <div style={{display: 'flex', gap: 8, alignItems: 'center'}}>
-                    <div style={{fontSize: 12, color: 'var(--text-secondary)'}}>Window: {readableDuration(windowMs)}</div>
-                    <button onClick={zoomIn} title="Zoom in" style={{padding: '6px 8px'}}>＋</button>
-                    <button onClick={zoomOut} title="Zoom out" style={{padding: '6px 8px'}}>－</button>
+                    <div style={{display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4}}>
+                        <div style={{fontSize: 12, color: 'var(--text-secondary)'}}>Window: {readableDuration(windowMs)}</div>
+                        <div style={{fontSize: 11, color: 'var(--text-secondary)', opacity: 0.9}}>Zoom: mouse wheel • + / - keys</div>
+                    </div>
+                    <div style={{display: 'flex', gap: 6}}>
+                        <button onClick={zoomIn} title="Zoom in" style={{padding: '6px 8px'}}>＋</button>
+                        <button onClick={zoomOut} title="Zoom out" style={{padding: '6px 8px'}}>－</button>
+                    </div>
                 </div>
             </div>
 
