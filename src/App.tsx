@@ -13,7 +13,6 @@ import TitlePage from './components/TitlePage';
 let alertId = 0;
 
 const App: React.FC = () => {
-    const [started, setStarted] = useState<boolean>(false);
     const [alerts, setAlerts] = useState<Alert[]>([]);
     const [system, setSystem] = useState<SystemState>({
         stability: 100,
@@ -23,6 +22,7 @@ const App: React.FC = () => {
     const [finished, setFinished] = useState(false);
     const [metrics, setMetrics] = useState<MetricPoint[]>([]);
     const systemRef = useRef(system);
+    const [started, setStarted] = useState<boolean>(false);
 
     // keep ref synced so interval can read latest values without re-creating
     useEffect(() => {
@@ -132,12 +132,12 @@ const App: React.FC = () => {
 
     return (
         <div className="app">
-            <h1>Q-Ready: Post-Quantum Grid Incident Simulation</h1>
-
             {!started ? (
                 <TitlePage onStart={handleStart} />
             ) : (
                 <>
+                    <h1>Q-Ready: Post-Quantum Grid Incident Simulation</h1>
+
                     <MetricGraph data={metrics} />
                     <StatusPanel system={system}/>
                     <ActionPanel onAction={performAction}/>

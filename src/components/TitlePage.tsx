@@ -1,12 +1,18 @@
-import React from 'react';
+import React, {useEffect} from 'react';
 
 interface Props {
     onStart: () => void;
 }
 
 const TitlePage: React.FC<Props> = ({ onStart }) => {
+    useEffect(() => {
+        // diagnostic log to help verify the component is mounting
+        // remove this after debugging
+        console.log('[TitlePage] mounted');
+    }, []);
+
     return (
-        <div className="panel title-page" style={{textAlign: 'center'}}>
+        <div className="panel title-page" style={{textAlign: 'center', outline: 'none', border: '1px dashed rgba(255,255,255,0.06)'}}>
             <h2 style={{marginBottom: 12}}>Welcome to the Q-Ready Grid Incident Simulation</h2>
 
             <p style={{color: 'var(--text-secondary)', marginBottom: 18}}>
@@ -30,4 +36,3 @@ const TitlePage: React.FC<Props> = ({ onStart }) => {
 };
 
 export default TitlePage;
-
