@@ -65,10 +65,12 @@ const App: React.FC = () => {
 
                 // Update system and then record metrics using the updated state values
                 setSystem(prev => {
+                    const stabilityDelta = typeof (event as never).stabilityDelta === 'number' ? (event as never).stabilityDelta : -10;
+                    const trustDelta = typeof (event as never).trustDelta === 'number' ? (event as never).trustDelta : -15;
                     const next = {
                         ...prev,
-                        stability: Math.max(0, prev.stability - 10),
-                        trustLevel: Math.max(0, prev.trustLevel - 15),
+                        stability: Math.max(0, prev.stability + stabilityDelta),
+                        trustLevel: Math.max(0, prev.trustLevel + trustDelta),
                     };
 
                     setMetrics(mPrev => [
