@@ -1,6 +1,7 @@
 import React, {useEffect, useRef, useState} from 'react';
 import type {Alert, SystemState} from './types';
 import {scenarioEvents} from './data/scenario';
+import type {ScenarioEvent} from './data/scenario';
 import AlertsPanel from './components/AlertsPanel';
 import ActionPanel from './components/ActionPanel';
 import StatusPanel from './components/StatusPanel.tsx';
@@ -49,7 +50,7 @@ const App: React.FC = () => {
         // Track timeout IDs so we can clear them on cleanup.
         const timers: number[] = [];
 
-        scenarioEvents.forEach(event => {
+        scenarioEvents.forEach((event: ScenarioEvent) => {
             const id = window.setTimeout(() => {
                 // Use functional updates to avoid stale closures and prevent double additions
                 setAlerts(prev => [
@@ -65,8 +66,8 @@ const App: React.FC = () => {
 
                 // Update system and then record metrics using the updated state values
                 setSystem(prev => {
-                    const stabilityDelta = typeof (event as never).stabilityDelta === 'number' ? (event as never).stabilityDelta : -10;
-                    const trustDelta = typeof (event as never).trustDelta === 'number' ? (event as never).trustDelta : -15;
+                    const stabilityDelta = event.stabilityDelta ?? -10;
+                    const trustDelta = event.trustDelta ?? -15;
                     const next = {
                         ...prev,
                         stability: Math.max(0, prev.stability + stabilityDelta),

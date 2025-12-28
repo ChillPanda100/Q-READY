@@ -1,4 +1,13 @@
-export const scenarioEvents = [
+export interface ScenarioEvent {
+    time: number;
+    severity: 'low' | 'medium' | 'high';
+    message: string;
+    recommendedAction: string;
+    stabilityDelta?: number;
+    trustDelta?: number;
+}
+
+export const scenarioEvents: ScenarioEvent[] = [
     {
         time: 20000, // 20s
         severity: 'low',
@@ -87,4 +96,4 @@ export const scenarioEvents = [
         stabilityDelta: -4,
         trustDelta: -5,
     },
-] as const;
+];
