@@ -2,20 +2,30 @@ import React from 'react';
 
 interface Props {
     onAction: (action: string) => void;
+    inProgress?: Record<string, boolean>;
 }
 
-const ActionPanel: React.FC<Props> = ({ onAction }) => {
+const ActionPanel: React.FC<Props> = ({ onAction, inProgress = {} }) => {
+    const busy = (a: string) => !!inProgress[a];
+
+    const btn = (action: string, label: string) => (
+        <button onClick={() => onAction(action)} disabled={busy(action)} aria-busy={busy(action)}>
+            {label}
+            {busy(action) && <span className="spinner" aria-hidden="true" />}
+        </button>
+    );
+
     return (
         <div className="panel">
             <h2>Operator Actions</h2>
-            <button onClick={() => onAction('rotate')}>Rotate Keys</button>
-            <button onClick={() => onAction('limit')}>Limit DER Autonomy</button>
-            <button onClick={() => onAction('escalate')}>Escalate Incident</button>
+            {btn('rotate', 'Rotate Keys')}
+            {btn('limit', 'Limit DER Autonomy')}
+            {btn('escalate', 'Escalate Incident')}
             <div style={{marginTop: 10}}>
-                <button onClick={() => onAction('patch')}>Apply Firmware Patch</button>
-                <button onClick={() => onAction('renew')}>Renew Certificates</button>
-                <button onClick={() => onAction('mitigate-network')}>Mitigate Network</button>
-                <button onClick={() => onAction('reboot')}>Reboot Affected DERs</button>
+                {btn('patch', 'Apply Firmware Patch')}
+                {btn('renew', 'Renew Certificates')}
+                {btn('mitigate-network', 'Mitigate Network')}
+                {btn('reboot', 'Reboot Affected DERs')}
             </div>
         </div>
     );

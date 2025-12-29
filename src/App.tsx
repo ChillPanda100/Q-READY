@@ -26,7 +26,9 @@ const App: React.FC = () => {
     const [finished, setFinished] = useState(false);
     const [metrics, setMetrics] = useState<MetricPoint[]>([]);
     const systemRef = useRef(system);
+    const actionTimersRef = useRef<number[]>([]);
     const [started, setStarted] = useState<boolean>(false);
+    const [actionInProgress, setActionInProgress] = useState<Record<string, boolean>>({});
 
     // keep ref synced so interval can read latest values without re-creating
     useEffect(() => {
@@ -52,25 +54,28 @@ const App: React.FC = () => {
     }, []);
 
 
+    // Schedule scenario events when the simulation starts. Timers are relative to start.
     useEffect(() => {
-        // Track timeout IDs so we can clear them on cleanup.
+        if (!started) return;
         const timers: number[] = [];
 
         scenarioEvents.forEach((event: ScenarioEvent) => {
             const id = window.setTimeout(() => {
-                // Use functional updates to avoid stale closures and prevent double additions
-                setAlerts(prev => [
-                    ...prev,
-                    {
-                        id: ++alertId,
-                        severity: event.severity,
-                        message: event.message,
-                        recommendedAction: event.recommendedAction,
-                        acknowledged: false,
-                    },
-                ]);
+                setAlerts(prev => {
+                    // avoid adding duplicate alerts with the same message
+                    if (prev.some(a => a.message === event.message)) return prev;
+                    return [
+                        ...prev,
+                        {
+                            id: ++alertId,
+                            severity: event.severity,
+                            message: event.message,
+                            recommendedAction: event.recommendedAction,
+                            acknowledged: false,
+                        },
+                    ];
+                });
 
-                // Update system and then record metrics using the updated state values
                 setSystem(prev => {
                     const stabilityDelta = event.stabilityDelta ?? -10;
                     const trustDelta = event.trustDelta ?? -15;
@@ -86,12 +91,14 @@ const App: React.FC = () => {
                             time: Date.now(),
                             stability: next.stability,
                             trust: next.trustLevel,
+                            firmwareIntegrity: next.firmwareIntegrity,
+                            certHealth: next.certHealth,
+                            networkHealth: next.networkHealth,
                         },
                     ]);
 
                     return next;
                 });
-
             }, event.time);
 
             timers.push(id);
@@ -100,11 +107,14 @@ const App: React.FC = () => {
         const finishId = window.setTimeout(() => setFinished(true), 150000); // finish after 150s
         timers.push(finishId);
 
+        // capture current action timers so cleanup can clear them too
+        const actionTimers = actionTimersRef.current.slice();
+
         return () => {
-            // Clear any scheduled timeouts when the effect is cleaned up (React StrictMode mounts/unmounts in dev)
             timers.forEach(t => clearTimeout(t));
+            actionTimers.forEach(t => clearTimeout(t));
         };
-    }, []);
+    }, [started]);
 
     const acknowledgeAlert = (id: number) => {
         // Remove the acknowledged alert from the list so it disappears from the UI
@@ -113,41 +123,86 @@ const App: React.FC = () => {
     };
 
     const performAction = (action: string) => {
+        // if already running, ignore
+        if (actionInProgress[action]) return;
+        // mark as in-progress
+        setActionInProgress(prev => ({...prev, [action]: true}));
+
+        // record a snapshot immediately (pre-action) including all metrics
         setMetrics(prev => [
             ...prev,
             {
                 time: Date.now(),
                 stability: system.stability,
                 trust: system.trustLevel,
+                firmwareIntegrity: system.firmwareIntegrity,
+                certHealth: system.certHealth,
+                networkHealth: system.networkHealth,
             },
         ]);
 
-        switch(action) {
-            case 'rotate':
-                setSystem(s => ({...s, trustLevel: s.trustLevel + 20, score: s.score + 10}));
-                break;
+        // simulate action duration and effect; durations in ms
+        const durations: Record<string, number> = {
+            rotate: 3000,
+            limit: 2000,
+            escalate: 1200,
+            patch: 6000,
+            renew: 4000,
+            'mitigate-network': 3500,
+            reboot: 5000,
+        };
+        const timeout = durations[action] ?? 2000;
+        const timerId = window.setTimeout(() => {
+            // apply the action effects now (on completion)
+            switch(action) {
+                case 'rotate':
+                    setSystem(s => ({...s, trustLevel: Math.min(100, s.trustLevel + 20), score: s.score + 10}));
+                    break;
 
-            case 'limit':
-                setSystem(s => ({...s, stability: s.stability + 15, score: s.score + 10}));
-                break;
+                case 'limit':
+                    setSystem(s => ({...s, stability: Math.min(100, s.stability + 15), score: s.score + 10}));
+                    break;
 
-            case 'escalate':
-                setSystem(s => ({...s, score: s.score + 5}));
-                break;
-            case 'patch':
-                setSystem(s => ({...s, firmwareIntegrity: Math.min(100, s.firmwareIntegrity + 20), stability: Math.min(100, s.stability + 8), score: s.score + 8}));
-                break;
-            case 'renew':
-                setSystem(s => ({...s, certHealth: Math.min(100, s.certHealth + 25), trustLevel: Math.min(100, s.trustLevel + 12), score: s.score + 10}));
-                break;
-            case 'mitigate-network':
-                setSystem(s => ({...s, networkHealth: Math.min(100, s.networkHealth + 20), stability: Math.min(100, s.stability + 6), score: s.score + 7}));
-                break;
-            case 'reboot':
-                setSystem(s => ({...s, firmwareIntegrity: Math.max(0, s.firmwareIntegrity - 5), stability: Math.max(0, s.stability + 5), score: s.score + 3}));
-                break;
-        }
+                case 'escalate':
+                    setSystem(s => ({...s, score: s.score + 5}));
+                    break;
+                case 'patch':
+                    setSystem(s => ({...s, firmwareIntegrity: Math.min(100, s.firmwareIntegrity + 20), stability: Math.min(100, s.stability + 8), score: s.score + 8}));
+                    break;
+                case 'renew':
+                    setSystem(s => ({...s, certHealth: Math.min(100, s.certHealth + 25), trustLevel: Math.min(100, s.trustLevel + 12), score: s.score + 10}));
+                    break;
+                case 'mitigate-network':
+                    setSystem(s => ({...s, networkHealth: Math.min(100, s.networkHealth + 20), stability: Math.min(100, s.stability + 6), score: s.score + 7}));
+                    break;
+                case 'reboot':
+                    setSystem(s => ({...s, firmwareIntegrity: Math.max(0, s.firmwareIntegrity - 5), stability: Math.max(0, s.stability + 5), score: s.score + 3}));
+                    break;
+            }
+
+            // mark completed
+            setActionInProgress(prev => ({...prev, [action]: false}));
+
+            // record a snapshot after action completes
+            setMetrics(prev => [
+                ...prev,
+                {
+                    time: Date.now(),
+                    stability: systemRef.current.stability,
+                    trust: systemRef.current.trustLevel,
+                    firmwareIntegrity: systemRef.current.firmwareIntegrity,
+                    certHealth: systemRef.current.certHealth,
+                    networkHealth: systemRef.current.networkHealth,
+                }
+            ]);
+        }, timeout);
+
+        // record timer id to clear on unmount
+        actionTimersRef.current.push(timerId);
+
+        return;
     };
+    // end performAction
 
     const handleStart = () => setStarted(true);
 
@@ -159,17 +214,20 @@ const App: React.FC = () => {
                 <>
                     <h1>Q-Ready: Post-Quantum Grid Incident Simulation</h1>
 
-                    <MetricGraph data={metrics} />
-                    <StatusPanel system={system}/>
-                    <ActionPanel onAction={performAction}/>
+                    <div className="grid-row">
+                        <MetricGraph data={metrics} />
+                        <StatusPanel system={system} />
+                    </div>
 
-                    <AlertsPanel alerts={alerts} onAcknowledge={acknowledgeAlert}/>
+                    <AlertsPanel alerts={alerts} onAcknowledge={acknowledgeAlert} />
 
-                    {finished && <ScorePanel score={system.score}/>}
-                </>
-            )}
-        </div>
-    );
-};
+                    {finished && <ScorePanel score={system.score} />}
+
+                    <ActionPanel onAction={performAction} inProgress={actionInProgress} />
+                 </>
+             )}
+         </div>
+     );
+ };
 
 export default App;

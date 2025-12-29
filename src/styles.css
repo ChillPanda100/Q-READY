@@ -108,6 +108,23 @@ button:active {
     transform: translateY(0);
 }
 
+/* Spinner used inside action buttons */
+.spinner {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    margin-left: 8px;
+    border-radius: 50%;
+    border: 2px solid rgba(255,255,255,0.12);
+    border-top-color: var(--accent-blue);
+    animation: spin 800ms linear infinite;
+    vertical-align: middle;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+button[disabled] { opacity: 0.6; cursor: not-allowed; }
+
 /* --------------------
    Alerts System
 -------------------- */
@@ -240,4 +257,55 @@ button:active {
         transform: translateX(0);
         opacity: 1;
     }
+}
+
+/* Grid layout for panels */
+.grid-row { display:grid; /* main graph column (flexible) + narrow status column */ grid-template-columns: minmax(420px, 1fr) 320px; gap: 18px; align-items: start; }
+
+/* Ensure the two panels in the grid row stretch to the same height */
+.grid-row > .panel {
+    align-self: stretch;
+    display: flex;
+    flex-direction: column;
+}
+
+.status-panel .status-body {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    flex: 1 1 auto; /* fill available vertical space */
+}
+
+.metric-panel {
+    display: flex;
+    flex-direction: column;
+    /* let the svg take available vertical space */
+}
+
+.metric-panel svg {
+    height: 100%;
+    width: 100%;
+    display: block;
+}
+
+@media (max-width: 900px) {
+    .grid-row {
+        grid-template-columns: 1fr;
+    }
+    .app-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+}
+
+/* Constrain the metric panel so it doesn't take the full width in wide layouts */
+.metric-panel {
+    max-width: 100%;
+}
+
+.metric-panel svg { width: 100%; height: auto; display: block; }
+
+/* Ensure the action panel sits below and spans available width */
+.action-row .panel, .panel.action {
+    width: 100%;
 }

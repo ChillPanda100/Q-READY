@@ -37,11 +37,12 @@ const MetricGraph: React.FC<Props> = ({data}) => {
     const tickCount = 5;
     for (let i = 0; i <= tickCount; i++) xTicks.push(minTime + (i / tickCount) * (endTime - minTime));
 
-    // Interpolation helper: get interpolated value at time t using sorted samples
-    const getValueAt = (t: number, key: 'stability' | 'trust') => {
-        if (sorted.length === 0) return key === 'stability' ? 100 : 100;
-        if (t <= sorted[0].time) return sorted[0][key];
-        if (t >= sorted[sorted.length - 1].time) return sorted[sorted.length - 1][key];
+    // Interpolation helper: get interpolated value at time t for any metric key
+    type MetricKey = Exclude<keyof MetricPoint, 'time'>;
+    const getValueAt = (t: number, key: MetricKey) => {
+        if (sorted.length === 0) return 100;
+        if (t <= sorted[0].time) return (sorted[0][key] ?? 100) as number;
+        if (t >= sorted[sorted.length - 1].time) return (sorted[sorted.length - 1][key] ?? 100) as number;
         let lo = 0, hi = sorted.length - 1;
         while (lo + 1 < hi) {
             const mid = Math.floor((lo + hi) / 2);
@@ -51,7 +52,9 @@ const MetricGraph: React.FC<Props> = ({data}) => {
         const b = sorted[hi];
         const span = b.time - a.time || 1;
         const frac = (t - a.time) / span;
-        return a[key] + (b[key] - a[key]) * frac;
+        const aval = (a[key] ?? 100) as number;
+        const bval = (b[key] ?? 100) as number;
+        return aval + (bval - aval) * frac;
     };
 
     // Resample across the visible window for smooth zooming: choose resolution
@@ -64,7 +67,10 @@ const MetricGraph: React.FC<Props> = ({data}) => {
             const t = Math.round(minTime + (i / (N - 1)) * (endTime - minTime));
             const stability = getValueAt(t, 'stability');
             const trust = getValueAt(t, 'trust');
-            arr.push({ time: t, stability, trust });
+            const firmwareIntegrity = getValueAt(t, 'firmwareIntegrity');
+            const certHealth = getValueAt(t, 'certHealth');
+            const networkHealth = getValueAt(t, 'networkHealth');
+            arr.push({ time: t, stability, trust, firmwareIntegrity, certHealth, networkHealth });
         }
         return arr;
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -74,7 +80,7 @@ const MetricGraph: React.FC<Props> = ({data}) => {
     const scaleY = (v: number) => HEIGHT - PADDING - (v / 100) * (HEIGHT - PADDING * 2);
 
     // Linear path generator (no curves)
-    const linePath = (key: 'stability' | 'trust') =>
+    const linePath = (key: MetricKey) =>
         usedVisible.map((d, i) => `${i === 0 ? 'M' : 'L'} ${scaleX(d.time)} ${scaleY(d[key])}`).join(' ');
 
     // Wheel zoom handler (over svg)
@@ -119,7 +125,7 @@ const MetricGraph: React.FC<Props> = ({data}) => {
     const baseXTickDelay = 8;
 
     return (
-        <div className="panel">
+        <div className="panel metric-panel">
             <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
                 <h2 style={{margin: 0}}>Live System Metrics</h2>
                 <div style={{display: 'flex', gap: 8, alignItems: 'center'}}>
@@ -141,8 +147,10 @@ const MetricGraph: React.FC<Props> = ({data}) => {
 
             <svg
                 ref={svgRef}
-                width={WIDTH}
+                viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
+                width="100%"
                 height={HEIGHT}
+                preserveAspectRatio="xMidYMid meet"
                 tabIndex={0}
                 style={{touchAction: 'none', display: 'block'}}
             >
