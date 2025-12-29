@@ -18,6 +18,9 @@ const App: React.FC = () => {
     const [system, setSystem] = useState<SystemState>({
         stability: 100,
         trustLevel: 100,
+        firmwareIntegrity: 100,
+        certHealth: 100,
+        networkHealth: 100,
         score: 0,
     });
     const [finished, setFinished] = useState(false);
@@ -38,6 +41,9 @@ const App: React.FC = () => {
                     time: Date.now(), // absolute timestamp
                     stability: systemRef.current.stability,
                     trust: systemRef.current.trustLevel,
+                    firmwareIntegrity: systemRef.current.firmwareIntegrity,
+                    certHealth: systemRef.current.certHealth,
+                    networkHealth: systemRef.current.networkHealth,
                 },
             ]);
         }, 500); // sample every 500ms
@@ -127,6 +133,18 @@ const App: React.FC = () => {
 
             case 'escalate':
                 setSystem(s => ({...s, score: s.score + 5}));
+                break;
+            case 'patch':
+                setSystem(s => ({...s, firmwareIntegrity: Math.min(100, s.firmwareIntegrity + 20), stability: Math.min(100, s.stability + 8), score: s.score + 8}));
+                break;
+            case 'renew':
+                setSystem(s => ({...s, certHealth: Math.min(100, s.certHealth + 25), trustLevel: Math.min(100, s.trustLevel + 12), score: s.score + 10}));
+                break;
+            case 'mitigate-network':
+                setSystem(s => ({...s, networkHealth: Math.min(100, s.networkHealth + 20), stability: Math.min(100, s.stability + 6), score: s.score + 7}));
+                break;
+            case 'reboot':
+                setSystem(s => ({...s, firmwareIntegrity: Math.max(0, s.firmwareIntegrity - 5), stability: Math.max(0, s.stability + 5), score: s.score + 3}));
                 break;
         }
     };

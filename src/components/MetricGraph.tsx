@@ -190,9 +190,12 @@ const MetricGraph: React.FC<Props> = ({data}) => {
                     );
                 })}
 
-                {/* Stability & Trust lines */}
+                {/* Stability, Trust, Firmware, Cert, Network lines */}
                 <path d={linePath('stability')} fill="none" stroke="#3b82f6" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
                 <path d={linePath('trust')} fill="none" stroke="#22c55e" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+                <path d={usedVisible.map((d, i) => `${i===0?'M':'L'} ${scaleX(d.time)} ${scaleY(d.firmwareIntegrity)}`).join(' ')} fill="none" stroke="#f59e0b" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+                <path d={usedVisible.map((d, i) => `${i===0?'M':'L'} ${scaleX(d.time)} ${scaleY(d.certHealth)}`).join(' ')} fill="none" stroke="#ef4444" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+                <path d={usedVisible.map((d, i) => `${i===0?'M':'L'} ${scaleX(d.time)} ${scaleY(d.networkHealth)}`).join(' ')} fill="none" stroke="#60a5fa" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
 
                 {/* Axis labels */}
                 <text transform={`translate(${PADDING - 40}, ${HEIGHT / 2}) rotate(-90)`} fontSize={12} fill="#cbd5e1" textAnchor="middle">Percentage</text>
@@ -200,9 +203,12 @@ const MetricGraph: React.FC<Props> = ({data}) => {
 
             </svg>
 
-            <div style={{display: 'flex', gap: '20px', marginTop: '8px', fontSize: '0.85rem'}}>
+            <div style={{display: 'flex', gap: '12px', marginTop: '8px', fontSize: '0.85rem', flexWrap: 'wrap'}}>
                 <span style={{color: '#3b82f6'}}>● Grid Stability</span>
                 <span style={{color: '#22c55e'}}>● Cryptographic Trust</span>
+                <span style={{color: '#f59e0b'}}>● Firmware Integrity</span>
+                <span style={{color: '#ef4444'}}>● Certificate Health</span>
+                <span style={{color: '#60a5fa'}}>● Network Health</span>
             </div>
         </div>
     );
