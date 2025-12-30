@@ -29,6 +29,9 @@ const App: React.FC = () => {
     const actionTimersRef = useRef<number[]>([]);
     const [started, setStarted] = useState<boolean>(false);
     const [actionInProgress, setActionInProgress] = useState<Record<string, boolean>>({});
+    const [authorizedEmergency, setAuthorizedEmergency] = useState<boolean>(false);
+    const [pqOnCooldown, setPqOnCooldown] = useState<boolean>(false);
+    const pqCooldownRef = useRef<number | null>(null);
 
     // keep ref synced so interval can read latest values without re-creating
     useEffect(() => {
@@ -150,33 +153,112 @@ const App: React.FC = () => {
             renew: 4000,
             'mitigate-network': 3500,
             reboot: 5000,
+            'isolate-segment': 2400,
+            'restore-autonomy': 2200,
+            'enforce-pq': 5000,
+            'verify-signatures': 2500,
+            'rollback': 6000,
+            'segment-network': 2500,
+            'restore-routing': 3000,
+            'acknowledge-ai': 800,
+            'authorize-emergency': 600,
         };
         const timeout = durations[action] ?? 2000;
         const timerId = window.setTimeout(() => {
             // apply the action effects now (on completion)
             switch(action) {
+                // Panel 2 — PKI actions
                 case 'rotate':
-                    setSystem(s => ({...s, trustLevel: Math.min(100, s.trustLevel + 20), score: s.score + 10}));
+                    // Rotate keys: big trust gain, small network hit
+                    setSystem(s => ({...s, trustLevel: Math.min(100, s.trustLevel + 22), networkHealth: Math.max(0, s.networkHealth - 6), score: s.score + 10}));
+                    // recover network health slowly
+                    actionTimersRef.current.push(window.setTimeout(() => setSystem(s => ({...s, networkHealth: Math.min(100, s.networkHealth + 6)})), 8000));
                     break;
 
+                // Panel 1 — DER / Grid
                 case 'limit':
-                    setSystem(s => ({...s, stability: Math.min(100, s.stability + 15), score: s.score + 10}));
+                    setSystem(s => ({...s, stability: Math.min(100, s.stability + 12), score: s.score + 8}));
                     break;
 
-                case 'escalate':
-                    setSystem(s => ({...s, score: s.score + 5}));
+                case 'reboot':
+                    // big stability boost, firmware hit, temporary network hit
+                    setSystem(s => ({...s, stability: Math.min(100, s.stability + 22), firmwareIntegrity: Math.max(0, s.firmwareIntegrity - 12), networkHealth: Math.max(0, s.networkHealth - 18), score: s.score + 12}));
+                    // recover network over time
+                    actionTimersRef.current.push(window.setTimeout(() => setSystem(s => ({...s, networkHealth: Math.min(100, s.networkHealth + 12)})), 9000));
                     break;
-                case 'patch':
-                    setSystem(s => ({...s, firmwareIntegrity: Math.min(100, s.firmwareIntegrity + 20), stability: Math.min(100, s.stability + 8), score: s.score + 8}));
+
+                case 'isolate-segment':
+                    setSystem(s => ({...s, stability: Math.min(100, s.stability + 10), networkHealth: Math.max(0, s.networkHealth - 10), score: s.score + 6}));
                     break;
+
+                case 'restore-autonomy':
+                    // only available when system.stability >= 80 (button disabled otherwise)
+                    setSystem(s => ({...s, stability: Math.max(0, s.stability - 5), networkHealth: Math.min(100, s.networkHealth + 8), score: s.score + 4}));
+                    break;
+
+                // PKI continued
                 case 'renew':
                     setSystem(s => ({...s, certHealth: Math.min(100, s.certHealth + 25), trustLevel: Math.min(100, s.trustLevel + 12), score: s.score + 10}));
                     break;
-                case 'mitigate-network':
-                    setSystem(s => ({...s, networkHealth: Math.min(100, s.networkHealth + 20), stability: Math.min(100, s.stability + 6), score: s.score + 7}));
+
+                case 'enforce-pq': {
+                    // enforce PQ: big trust gain, large network hit, cooldown
+                    if (!authorizedEmergency || pqOnCooldown) break;
+                    setSystem(s => ({...s, trustLevel: Math.min(100, s.trustLevel + 28), networkHealth: Math.max(0, s.networkHealth - 30), score: s.score + 18}));
+                    setPqOnCooldown(true);
+                    // cooldown 30s
+                    const pqTimerLocal = window.setTimeout(() => setPqOnCooldown(false), 30000);
+                    if (pqCooldownRef.current) clearTimeout(pqCooldownRef.current);
+                    pqCooldownRef.current = pqTimerLocal;
+                    actionTimersRef.current.push(pqTimerLocal);
+                    // gradual network recovery
+                    actionTimersRef.current.push(window.setTimeout(() => setSystem(s => ({...s, networkHealth: Math.min(100, s.networkHealth + 20)})), 20000));
                     break;
-                case 'reboot':
-                    setSystem(s => ({...s, firmwareIntegrity: Math.max(0, s.firmwareIntegrity - 5), stability: Math.max(0, s.stability + 5), score: s.score + 3}));
+                }
+
+                // Firmware
+                case 'patch':
+                    setSystem(s => ({...s, firmwareIntegrity: Math.min(100, s.firmwareIntegrity + 30), stability: Math.max(0, s.stability - 10), networkHealth: Math.max(0, s.networkHealth - 8), score: s.score + 10}));
+                    // simulate stabilization after patch completes
+                    actionTimersRef.current.push(window.setTimeout(() => setSystem(s => ({...s, stability: Math.min(100, s.stability + 8)})), 9000));
+                    break;
+
+                case 'verify-signatures':
+                    setSystem(s => ({...s, firmwareIntegrity: Math.min(100, s.firmwareIntegrity + 8), trustLevel: Math.min(100, s.trustLevel + 5), score: s.score + 6}));
+                    break;
+
+                case 'rollback':
+                    if (!authorizedEmergency) break;
+                    setSystem(s => ({...s, firmwareIntegrity: Math.min(100, s.firmwareIntegrity + 15), stability: Math.max(0, s.stability - 25), score: s.score + 12}));
+                    break;
+
+                // Network
+                case 'mitigate-network':
+                    setSystem(s => ({...s, networkHealth: Math.min(100, s.networkHealth + 25), stability: Math.min(100, s.stability + 8), score: s.score + 9}));
+                    break;
+
+                case 'segment-network':
+                    setSystem(s => ({...s, networkHealth: Math.min(100, s.networkHealth + 10), stability: Math.max(0, s.stability - 8), score: s.score + 7}));
+                    break;
+
+                case 'restore-routing':
+                    setSystem(s => ({...s, networkHealth: Math.min(100, s.networkHealth + 18), stability: Math.min(100, s.stability + 10), score: s.score + 10}));
+                    break;
+
+                // Incident command
+                case 'escalate':
+                    setSystem(s => ({...s, score: s.score + 5}));
+                    break;
+
+                case 'acknowledge-ai':
+                    // remove the oldest alert if any
+                    setAlerts(prev => prev.slice(1));
+                    setSystem(s => ({...s, score: s.score + 2}));
+                    break;
+
+                case 'authorize-emergency':
+                    setAuthorizedEmergency(true);
+                    setSystem(s => ({...s, score: s.score + 5}));
                     break;
             }
 
@@ -204,6 +286,13 @@ const App: React.FC = () => {
     };
     // end performAction
 
+    // cleanup pq cooldown timer on unmount
+    useEffect(() => {
+        return () => {
+            if (pqCooldownRef.current) clearTimeout(pqCooldownRef.current);
+        };
+    }, []);
+
     const handleStart = () => setStarted(true);
 
     return (
@@ -212,7 +301,7 @@ const App: React.FC = () => {
                 <TitlePage onStart={handleStart} />
             ) : (
                 <>
-                    <h1>Q-Ready: Post-Quantum Grid Incident Simulation</h1>
+                    <h1 style={{textAlign: 'center', marginBottom: 20}}>Q-Ready: Post-Quantum Grid Incident Simulation</h1>
 
                     <div className="grid-row">
                         <MetricGraph data={metrics} />
@@ -223,7 +312,7 @@ const App: React.FC = () => {
 
                     {finished && <ScorePanel score={system.score} />}
 
-                    <ActionPanel onAction={performAction} inProgress={actionInProgress} />
+                    <ActionPanel onAction={performAction} inProgress={actionInProgress} system={system} authorizedEmergency={authorizedEmergency} pqOnCooldown={pqOnCooldown} onAuthorize={() => setAuthorizedEmergency(true)} />
                  </>
              )}
          </div>

@@ -1,8 +1,13 @@
 import React from 'react';
+import type { SystemState } from '../types';
 
 interface Props {
     onAction: (action: string) => void;
     inProgress?: Record<string, boolean>;
+    system?: SystemState;
+    authorizedEmergency?: boolean;
+    pqOnCooldown?: boolean;
+    onAuthorize?: () => void;
 }
 
 const ActionPanel: React.FC<Props> = ({ onAction, inProgress = {} }) => {

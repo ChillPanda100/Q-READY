@@ -5,8 +5,8 @@ interface HeaderProps {
 }
 
 const Header: React.FC<HeaderProps> = ({ title }) => (
-    <header style={{ marginBottom: '20px' }}>
-        <h1>{title}</h1>
+    <header style={{ marginBottom: '20px', textAlign: 'center' }}>
+        <h1 style={{ margin: 0 }}>{title}</h1>
     </header>
 );
 
