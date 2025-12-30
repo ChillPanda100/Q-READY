@@ -1,73 +1,82 @@
-# React + TypeScript + Vite
+# Q-Ready — Post-Quantum Grid Incident Simulation
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A compact React + TypeScript simulation that models grid stability, cryptographic trust, firmware integrity, certificate health and network health for Distributed Energy Resources (DERs). The app is an operator training / exercise tool that presents alerts, a live metric graph, and domain-specific operator panels to respond to incidents.
 
-Currently, two official plugins are available:
+This README covers how to run the project, the key features, and where to make common edits.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+---
 
-## React Compiler
+## Key features
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- Live metrics graph (time-series) showing:
+  - Grid Stability
+  - Cryptographic Trust
+  - Firmware Integrity
+  - Certificate Health
+  - Network Health
+- Alerts panel with acknowledge/slide-away animations.
+- Five domain-specific operator panels (split UI):
+  1. DER / Grid Operations — control DERs to stabilize the grid.
+  2. Cryptographic & Key Management (PKI) — rotate keys, renew certs, enforce PQ mode.
+  3. Firmware & Device Integrity — patch, verify, rollback firmware.
+  4. Network Operations — mitigate traffic, segment networks, restore routing.
+  5. Incident Command & Governance — escalation, acknowledgement, emergency authorization.
+- Operator actions take simulated time and may temporarily affect multiple metrics (tradeoffs are modeled).
+- Enforce-PQ is a high-impact action with a cooldown and requires emergency authorization.
 
-## Expanding the ESLint configuration
+---
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+## Quick start (development)
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+1. Install dependencies:
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```powershell
+npm install
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+2. Start the dev server with hot-reload:
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```powershell
+npm run dev
 ```
+
+3. Open the app in the browser (Vite will print the local URL, usually http://localhost:5173).
+
+4. Use the title screen to start the simulation. The scenario timeline and alerts begin after you press Start.
+
+Notes:
+- The simulation samples metrics every 500ms and keeps a rolling buffer for the graph.
+- Actions are simulated (delays, temporary effects); expect button spinners while actions execute.
+
+---
+
+## Build
+
+To build a production bundle:
+
+```powershell
+npm run build
+```
+
+To preview the production build locally:
+
+```powershell
+npm run preview
+```
+
+---
+
+## Where to find things in the code
+
+- `src/App.tsx` — main application state, metric sampling, scenario scheduling, and `performAction` handler that applies action effects and timers.
+- `src/components/MetricGraph.tsx` — SVG/time-series rendering and zoom behavior.
+- `src/components/AlertsPanel.tsx` — alerts list, acknowledge animation and timing.
+- `src/components/ActionPanel.tsx` — top-level actions area (now composes separate domain panels).
+- `src/components/DERPanel.tsx`, `PKIPanel.tsx`, `FirmwarePanel.tsx`, `NetworkPanel.tsx`, `IncidentPanel.tsx` — domain-specific button groups.
+- `src/data/scenario.ts` — scheduled scenario events and their metric deltas/messages. Edit here to change the timed incidents.
+- `src/types/index.ts` — shared TypeScript types used across the app.
+- `src/styles.css` — global styling, panel layout, and animation rules.
+
+---
+
+If you'd like additional developer guidance (contributing conventions, cooldown UI, confirmation dialogs, or e2e smoke tests), tell me which item you'd like and I will add that next.
