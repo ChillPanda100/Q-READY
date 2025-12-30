@@ -1,5 +1,10 @@
 import React from 'react';
 import type { SystemState } from '../types';
+import DERPanel from './DERPanel';
+import PKIPanel from './PKIPanel';
+import FirmwarePanel from './FirmwarePanel';
+import NetworkPanel from './NetworkPanel';
+import IncidentPanel from './IncidentPanel';
 
 interface Props {
     onAction: (action: string) => void;
@@ -10,27 +15,16 @@ interface Props {
     onAuthorize?: () => void;
 }
 
-const ActionPanel: React.FC<Props> = ({ onAction, inProgress = {} }) => {
-    const busy = (a: string) => !!inProgress[a];
-
-    const btn = (action: string, label: string) => (
-        <button onClick={() => onAction(action)} disabled={busy(action)} aria-busy={busy(action)}>
-            {label}
-            {busy(action) && <span className="spinner" aria-hidden="true" />}
-        </button>
-    );
-
+const ActionPanel: React.FC<Props> = ({ onAction, inProgress = {}, system, authorizedEmergency = false, pqOnCooldown = false, onAuthorize }) => {
     return (
-        <div className="panel">
+        <div className="panel action-panel">
             <h2>Operator Actions</h2>
-            {btn('rotate', 'Rotate Keys')}
-            {btn('limit', 'Limit DER Autonomy')}
-            {btn('escalate', 'Escalate Incident')}
-            <div style={{marginTop: 10}}>
-                {btn('patch', 'Apply Firmware Patch')}
-                {btn('renew', 'Renew Certificates')}
-                {btn('mitigate-network', 'Mitigate Network')}
-                {btn('reboot', 'Reboot Affected DERs')}
+            <div style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 12}}>
+                <DERPanel onAction={onAction} inProgress={inProgress} system={system} />
+                <PKIPanel onAction={onAction} inProgress={inProgress} system={system} authorizedEmergency={authorizedEmergency} pqOnCooldown={pqOnCooldown} />
+                <FirmwarePanel onAction={onAction} inProgress={inProgress} system={system} authorizedEmergency={authorizedEmergency} />
+                <NetworkPanel onAction={onAction} inProgress={inProgress} system={system} />
+                <IncidentPanel onAction={onAction} inProgress={inProgress} authorizedEmergency={authorizedEmergency} onAuthorize={onAuthorize} />
             </div>
         </div>
     );
