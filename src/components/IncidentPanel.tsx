@@ -16,7 +16,7 @@ const IncidentPanel: React.FC<Props> = ({ onAction, inProgress = {}, authorizedE
             disabled={busy(action) || !!opts.disabled}
             title={opts.title}
             aria-busy={busy(action)}
-            style={{marginRight:8, marginBottom:8}}
+            style={{margin: 4, padding: '6px 10px', fontSize: '0.85rem'}}
         >
             {label}
             {busy(action) && <span className="spinner" aria-hidden="true" />}
@@ -24,9 +24,9 @@ const IncidentPanel: React.FC<Props> = ({ onAction, inProgress = {}, authorizedE
     );
 
     return (
-        <div className="panel">
-            <h3>Incident Command & Governance</h3>
-            <div>
+        <div className="panel" style={{display:'flex', flexDirection:'column'}}>
+            <h3 style={{marginTop:0}}>Incident Command & Governance</h3>
+            <div style={{display:'flex', flexWrap:'wrap', gap:6}}>
                 {btn('escalate', 'Escalate Incident', { title: 'Escalation: no direct metric change' })}
                 {btn('acknowledge-ai', 'Acknowledge AI Alert', { title: 'Acknowledge and reduce alert pressure' })}
                 {onAuthorize ? (
@@ -40,4 +40,3 @@ const IncidentPanel: React.FC<Props> = ({ onAction, inProgress = {}, authorizedE
 };
 
 export default IncidentPanel;
-

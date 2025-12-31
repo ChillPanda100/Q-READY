@@ -19,12 +19,12 @@ const ActionPanel: React.FC<Props> = ({ onAction, inProgress = {}, system, autho
     return (
         <div className="panel action-panel">
             <h2>Operator Actions</h2>
-            <div style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 12}}>
-                <DERPanel onAction={onAction} inProgress={inProgress} system={system} />
-                <PKIPanel onAction={onAction} inProgress={inProgress} system={system} authorizedEmergency={authorizedEmergency} pqOnCooldown={pqOnCooldown} />
-                <FirmwarePanel onAction={onAction} inProgress={inProgress} system={system} authorizedEmergency={authorizedEmergency} />
-                <NetworkPanel onAction={onAction} inProgress={inProgress} system={system} />
-                <IncidentPanel onAction={onAction} inProgress={inProgress} authorizedEmergency={authorizedEmergency} onAuthorize={onAuthorize} />
+            <div style={{display: 'flex', flexDirection: 'row', gap: 12, overflow: 'visible', paddingBottom: 6, alignItems: 'flex-start'}}>
+                <div style={{flex: '1 1 0', minWidth: 0}}><DERPanel onAction={onAction} inProgress={inProgress} system={system} /></div>
+                <div style={{flex: '1 1 0', minWidth: 0}}><PKIPanel onAction={onAction} inProgress={inProgress} system={system} authorizedEmergency={authorizedEmergency} pqOnCooldown={pqOnCooldown} /></div>
+                <div style={{flex: '1 1 0', minWidth: 0}}><FirmwarePanel onAction={onAction} inProgress={inProgress} system={system} authorizedEmergency={authorizedEmergency} /></div>
+                <div style={{flex: '1 1 0', minWidth: 0}}><NetworkPanel onAction={onAction} inProgress={inProgress} system={system} /></div>
+                <div style={{flex: '1 1 0', minWidth: 0}}><IncidentPanel onAction={onAction} inProgress={inProgress} authorizedEmergency={authorizedEmergency} onAuthorize={onAuthorize} /></div>
             </div>
         </div>
     );

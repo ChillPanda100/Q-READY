@@ -17,7 +17,7 @@ const DERPanel: React.FC<Props> = ({ onAction, inProgress = {}, system }) => {
             disabled={busy(action) || !!opts.disabled}
             title={opts.title}
             aria-busy={busy(action)}
-            style={{marginRight:8, marginBottom:8}}
+            style={{margin: 4, padding: '6px 10px', fontSize: '0.85rem'}}
         >
             {label}
             {busy(action) && <span className="spinner" aria-hidden="true" />}
@@ -25,9 +25,9 @@ const DERPanel: React.FC<Props> = ({ onAction, inProgress = {}, system }) => {
     );
 
     return (
-        <div className="panel">
-            <h3>DER / Grid Operations</h3>
-            <div>
+        <div className="panel" style={{display:'flex', flexDirection:'column'}}>
+            <h3 style={{marginTop:0}}>DER / Grid Operations</h3>
+            <div style={{display:'flex', flexWrap:'wrap', gap:6}}>
                 {btn('limit', 'Limit DER Autonomy', { title: 'Grid Stability ↑ — Tradeoff: reduced DER efficiency' })}
                 {btn('reboot', 'Reboot Affected DERs', { title: 'Grid Stability ↑↑ — Tradeoff: Firmware Integrity ↓, Network Health ↓ (temporary)' })}
                 {btn('isolate-segment', 'Isolate Compromised DER Segment', { title: 'Grid Stability ↑ — Tradeoff: localized network health ↓ and capacity loss' })}
@@ -38,4 +38,3 @@ const DERPanel: React.FC<Props> = ({ onAction, inProgress = {}, system }) => {
 };
 
 export default DERPanel;
-
