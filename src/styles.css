@@ -81,7 +81,6 @@ h1 {
 /* --------------------
    Buttons
 -------------------- */
-
 button {
     margin-top: 8px;
     margin-right: 8px;
@@ -97,23 +96,27 @@ button {
     cursor: pointer;
     font-size: 0.9rem;
     transition: all 0.2s ease;
+    /* allow button text to wrap and break long labels on small screens */
+    white-space: normal;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 0;
+    max-width: 100%; /* never overflow parent */
+    flex-shrink: 1; /* allow shrinking inside flex containers */
 }
 
-button:hover {
-    background: rgba(59, 130, 246, 0.35);
-    transform: translateY(-1px);
-}
-
-button:active {
-    transform: translateY(0);
-}
+/* Ensure buttons inside flexible panels can wrap their contents and shrink */
+.panel button { box-sizing: border-box; }
 
 /* Spinner used inside action buttons */
 .spinner {
     display: inline-block;
     width: 14px;
     height: 14px;
-    margin-left: 8px;
+    margin-left: 6px;
     border-radius: 50%;
     border: 2px solid rgba(255,255,255,0.12);
     border-top-color: var(--accent-blue);
@@ -298,6 +301,25 @@ button[disabled] { opacity: 0.6; cursor: not-allowed; }
     }
 }
 
+/* Small-screen tweaks: make buttons more compact and allow wrapping */
+@media (max-width: 760px) {
+    button {
+        padding: 6px 8px;
+        font-size: 0.78rem;
+        border-radius: 6px;
+        white-space: normal;
+    }
+
+    /* Make panel headings and spacing slightly tighter on small screens */
+    .panel { padding: 12px 14px; }
+    .panel h2 { font-size: 1rem; }
+    .panel h3 { font-size: 0.95rem; }
+
+    /* Ensure action panel children can shrink without overflow */
+    .panel.action-panel { overflow: visible; }
+    .panel.action-panel .panel { min-width: 0; }
+}
+
 /* Constrain the metric panel so it doesn't take the full width in wide layouts */
 .metric-panel {
     max-width: 100%;
@@ -308,4 +330,34 @@ button[disabled] { opacity: 0.6; cursor: not-allowed; }
 /* Ensure the action panel sits below and spans available width */
 .action-row .panel, .panel.action {
     width: 100%;
+}
+
+/* Action panels responsive layout */
+.action-panels {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 12px;
+    align-items: start;
+}
+
+.action-panel-item {
+    min-width: 0; /* allow shrinking */
+}
+
+/* Break into 3 columns + 2 columns (two rows) on medium/narrow screens */
+@media (max-width: 1100px) {
+    .action-panels {
+        grid-template-columns: repeat(3, 1fr);
+    }
+    .action-panel-item:nth-child(n+4) {
+        /* place items 4-5 on the second row */
+        grid-column: span 1;
+    }
+}
+
+/* On very small screens, use 2 columns to keep buttons readable */
+@media (max-width: 760px) {
+    .action-panels {
+        grid-template-columns: repeat(2, 1fr);
+    }
 }
