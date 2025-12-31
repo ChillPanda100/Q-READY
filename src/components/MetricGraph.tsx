@@ -57,6 +57,23 @@ const MetricGraph: React.FC<Props> = ({data}) => {
         return aval + (bval - aval) * frac;
     };
 
+    // Metrics metadata and visibility state
+    const metricsMeta: { key: MetricKey; label: string; color: string }[] = [
+        { key: 'stability', label: 'Grid Stability', color: '#3b82f6' },
+        { key: 'trust', label: 'Cryptographic Trust', color: '#22c55e' },
+        { key: 'firmwareIntegrity', label: 'Firmware Integrity', color: '#f59e0b' },
+        { key: 'certHealth', label: 'Certificate Health', color: '#ef4444' },
+        { key: 'networkHealth', label: 'Network Health', color: '#60a5fa' },
+    ];
+
+    const [visibleMetrics, setVisibleMetrics] = useState<Record<MetricKey, boolean>>(() => {
+        const initial = {} as Record<MetricKey, boolean>;
+        metricsMeta.forEach(m => initial[m.key] = true);
+        return initial;
+    });
+
+    const toggleMetric = (k: MetricKey) => setVisibleMetrics(prev => ({ ...prev, [k]: !prev[k] }));
+
     // Resample across the visible window for smooth zooming: choose resolution
     // proportional to the window: smaller windows get more samples.
     const usedVisible = useMemo(() => {
@@ -124,11 +141,60 @@ const MetricGraph: React.FC<Props> = ({data}) => {
     const labelDelayOffset = 6;
     const baseXTickDelay = 8;
 
+    // responsive metric selector: switch to compact dropdown on narrow screens
+    const [isNarrow, setIsNarrow] = useState<boolean>(() => typeof window !== 'undefined' ? window.innerWidth < 760 : false);
+    const [metricsMenuOpen, setMetricsMenuOpen] = useState(false);
+    const menuRef = useRef<HTMLDivElement | null>(null);
+
+    useEffect(() => {
+        const onResize = () => setIsNarrow(window.innerWidth < 760);
+        window.addEventListener('resize', onResize);
+        return () => window.removeEventListener('resize', onResize);
+    }, []);
+
+    // close menu on outside click
+    useEffect(() => {
+        if (!metricsMenuOpen) return;
+        const onDoc = (ev: MouseEvent) => {
+            if (!menuRef.current) return;
+            if (!menuRef.current.contains(ev.target as Node)) setMetricsMenuOpen(false);
+        };
+        document.addEventListener('mousedown', onDoc);
+        return () => document.removeEventListener('mousedown', onDoc);
+    }, [metricsMenuOpen]);
+
     return (
         <div className="panel metric-panel">
-            <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
+            <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'relative'}}>
                 <h2 style={{margin: 0}}>Live System Metrics</h2>
-                <div style={{display: 'flex', gap: 8, alignItems: 'center'}}>
+                <div style={{display: 'flex', gap: 12, alignItems: 'center'}}>
+                    {/* Metric selection checkboxes (desktop) or compact dropdown (narrow) */}
+                    {!isNarrow ? (
+                        <div style={{display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap'}}>
+                            {metricsMeta.map(m => (
+                                <label key={m.key} style={{display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--text-primary)'}}>
+                                    <input type="checkbox" checked={visibleMetrics[m.key]} onChange={() => toggleMetric(m.key)} />
+                                    <span style={{color: m.color}}>{m.label}</span>
+                                </label>
+                            ))}
+                        </div>
+                    ) : (
+                        <div style={{position: 'relative'}} ref={menuRef}>
+                            <button onClick={() => setMetricsMenuOpen(s => !s)} aria-expanded={metricsMenuOpen} style={{padding: '6px 10px'}}>Metrics ▾</button>
+                            {metricsMenuOpen && (
+                                <div style={{position: 'absolute', right: 0, top: 'calc(100% + 8px)', background: 'var(--bg-panel)', border: '1px solid var(--border-soft)', padding: 10, borderRadius: 8, boxShadow: '0 8px 24px rgba(2,6,23,0.6)', zIndex: 60, minWidth: 200}}>
+                                    <div style={{display: 'flex', flexDirection: 'column', gap: 8}}>
+                                        {metricsMeta.map(m => (
+                                            <label key={m.key} style={{display: 'flex', alignItems: 'center', gap: 8, fontSize: 13}}>
+                                                <input type="checkbox" checked={visibleMetrics[m.key]} onChange={() => toggleMetric(m.key)} />
+                                                <span style={{color: m.color}}>{m.label}</span>
+                                            </label>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    )}
                     <div style={{display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4}}>
                         <div style={{fontSize: 12, color: 'var(--text-secondary)'}}>Window: {readableDuration(windowMs)}</div>
                         <div style={{fontSize: 11, color: 'var(--text-secondary)', opacity: 0.9}}>Zoom: mouse wheel • + / - keys</div>
@@ -198,12 +264,12 @@ const MetricGraph: React.FC<Props> = ({data}) => {
                     );
                 })}
 
-                {/* Stability, Trust, Firmware, Cert, Network lines */}
-                <path d={linePath('stability')} fill="none" stroke="#3b82f6" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
-                <path d={linePath('trust')} fill="none" stroke="#22c55e" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
-                <path d={usedVisible.map((d, i) => `${i===0?'M':'L'} ${scaleX(d.time)} ${scaleY(d.firmwareIntegrity)}`).join(' ')} fill="none" stroke="#f59e0b" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
-                <path d={usedVisible.map((d, i) => `${i===0?'M':'L'} ${scaleX(d.time)} ${scaleY(d.certHealth)}`).join(' ')} fill="none" stroke="#ef4444" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
-                <path d={usedVisible.map((d, i) => `${i===0?'M':'L'} ${scaleX(d.time)} ${scaleY(d.networkHealth)}`).join(' ')} fill="none" stroke="#60a5fa" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+                {/* Render each metric line only if selected */}
+                {visibleMetrics['stability'] && <path d={linePath('stability')} fill="none" stroke="#3b82f6" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />}
+                {visibleMetrics['trust'] && <path d={linePath('trust')} fill="none" stroke="#22c55e" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />}
+                {visibleMetrics['firmwareIntegrity'] && <path d={linePath('firmwareIntegrity')} fill="none" stroke="#f59e0b" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />}
+                {visibleMetrics['certHealth'] && <path d={linePath('certHealth')} fill="none" stroke="#ef4444" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />}
+                {visibleMetrics['networkHealth'] && <path d={linePath('networkHealth')} fill="none" stroke="#60a5fa" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />}
 
                 {/* Axis labels */}
                 <text transform={`translate(${PADDING - 40}, ${HEIGHT / 2}) rotate(-90)`} fontSize={12} fill="#cbd5e1" textAnchor="middle">Percentage</text>
@@ -212,11 +278,11 @@ const MetricGraph: React.FC<Props> = ({data}) => {
             </svg>
 
             <div style={{display: 'flex', gap: '12px', marginTop: '8px', fontSize: '0.85rem', flexWrap: 'wrap'}}>
-                <span style={{color: '#3b82f6'}}>● Grid Stability</span>
-                <span style={{color: '#22c55e'}}>● Cryptographic Trust</span>
-                <span style={{color: '#f59e0b'}}>● Firmware Integrity</span>
-                <span style={{color: '#ef4444'}}>● Certificate Health</span>
-                <span style={{color: '#60a5fa'}}>● Network Health</span>
+                {metricsMeta.map(m => (
+                    <button key={m.key} onClick={() => toggleMetric(m.key)} style={{background: 'transparent', border: 'none', padding: 0, color: visibleMetrics[m.key] ? m.color : 'rgba(156,163,175,0.6)', cursor: 'pointer'}}>
+                        ● {m.label}
+                    </button>
+                ))}
             </div>
         </div>
     );
