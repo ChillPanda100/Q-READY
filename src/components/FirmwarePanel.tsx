@@ -31,7 +31,7 @@ const FirmwarePanel: React.FC<Props> = ({ onAction, inProgress = {}, system, aut
     return (
         <div className="panel" style={{display:'flex', flexDirection:'column'}}>
             <h3 style={{marginTop:0}}>Firmware & Device Integrity</h3>
-            <div style={{display:'flex', flexWrap:'wrap', gap:6}}>
+            <div className="panel-buttons">
                 {btn('patch', 'Apply Firmware Patch', { disabled: (sys.firmwareIntegrity ?? 0) >= 99, title: 'Firmware Integrity ↑↑ — May cause reboots and temporary stability drop' })}
                 {btn('verify-signatures', 'Verify Firmware Signatures', { title: 'Firmware Integrity ↑ — Low risk' })}
                 {btn('rollback', 'Rollback Firmware Version', { disabled: !authorizedEmergency, title: 'Emergency-only: may restore integrity but can cause Grid Stability ↓↓' })}

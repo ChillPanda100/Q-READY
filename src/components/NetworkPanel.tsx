@@ -28,7 +28,7 @@ const NetworkPanel: React.FC<Props> = ({ onAction, inProgress = {} }: Props) => 
     return (
         <div className="panel" style={{display:'flex', flexDirection:'column'}}>
             <h3 style={{marginTop:0}}>Network Operations</h3>
-            <div style={{display:'flex', flexWrap:'wrap', gap:6}}>
+            <div className="panel-buttons">
                 {btn('mitigate-network', 'Mitigate Network Traffic', { title: 'Network Health ↑↑ — Grid Stability ↑' })}
                 {btn('segment-network', 'Segment DER Network', { title: 'Network Health ↑ — Tradeoff: Grid Stability ↓ (capacity loss)' })}
                 {btn('restore-routing', 'Restore Network Routing', { title: 'Network Health ↑ — Use when threat contained' })}

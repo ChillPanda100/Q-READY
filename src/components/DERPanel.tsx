@@ -27,7 +27,7 @@ const DERPanel: React.FC<Props> = ({ onAction, inProgress = {}, system }) => {
     return (
         <div className="panel" style={{display:'flex', flexDirection:'column'}}>
             <h3 style={{marginTop:0}}>DER / Grid Operations</h3>
-            <div style={{display:'flex', flexWrap:'wrap', gap:6}}>
+            <div className="panel-buttons">
                 {btn('limit', 'Limit DER Autonomy', { title: 'Grid Stability ↑ — Tradeoff: reduced DER efficiency' })}
                 {btn('reboot', 'Reboot Affected DERs', { title: 'Grid Stability ↑↑ — Tradeoff: Firmware Integrity ↓, Network Health ↓ (temporary)' })}
                 {btn('isolate-segment', 'Isolate Compromised DER Segment', { title: 'Grid Stability ↑ — Tradeoff: localized network health ↓ and capacity loss' })}

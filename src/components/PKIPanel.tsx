@@ -29,7 +29,7 @@ const PKIPanel: React.FC<Props> = ({ onAction, inProgress = {}, system, authoriz
     return (
         <div className="panel" style={{display:'flex', flexDirection:'column'}}>
             <h3 style={{marginTop:0}}>Cryptographic & Key Management (PKI)</h3>
-            <div style={{display:'flex', flexWrap:'wrap', gap:6}}>
+            <div className="panel-buttons">
                 {btn('rotate', 'Rotate Cryptographic Keys', { disabled: (sys.certHealth ?? 0) < 70, title: 'Requires Certificate Health ≥ 70% (temporary network handshake failures)' })}
                 {btn('renew', 'Renew Certificates', { title: 'Certificate Health ↑↑ — Improves trust; requires DER connectivity' })}
                 {btn('enforce-pq', 'Enforce Post-Quantum Mode', { disabled: pqOnCooldown || !authorizedEmergency, title: pqOnCooldown ? 'On cooldown' : !authorizedEmergency ? 'Requires emergency authorization' : 'High-impact: Network Health ↓↓; cooldown enforced' })}
