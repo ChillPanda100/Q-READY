@@ -285,6 +285,12 @@ button:hover {
     }
 }
 
+/* animation for new active alerts (slide in from bottom-right) */
+@keyframes slideInBR {
+    from { transform: translate(20px, 12px); opacity: 0; }
+    to   { transform: translate(0, 0); opacity: 1; }
+}
+
 /* Grid layout for panels */
 .grid-row { display:grid; /* main graph column (flexible) + narrow status column */ grid-template-columns: minmax(420px, 1fr) 320px; gap: 18px; align-items: start; }
 
@@ -449,3 +455,132 @@ button:hover {
     pointer-events: none;
 }
 .side-dashboard-backdrop.open { opacity: 1; pointer-events: auto; }
+
+/* Active Alerts Right Sidebar (Tier 1) */
+.active-alerts-panel {
+    position: fixed;
+    top: 72px; /* leave room for header */
+    right: 20px;
+    width: 360px;
+    max-height: calc(100vh - 96px);
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    z-index: 999;
+}
+
+.active-alert-card {
+    background: linear-gradient(180deg, rgba(2,6,23,0.98), rgba(2,6,23,0.9));
+    border: 1px solid var(--border-soft);
+    padding: 12px;
+    border-radius: 10px;
+    box-shadow: 0 10px 24px rgba(0,0,0,0.45);
+    display: flex;
+    gap: 8px;
+    align-items: flex-start;
+    animation: slideInBR 360ms cubic-bezier(0.25, 0.9, 0.2, 1);
+}
+
+.active-alert-card .badge {
+    min-width: 68px;
+    padding: 6px 8px;
+    border-radius: 8px;
+    font-weight: 700;
+}
+
+.active-alert-card .badge.HIGH { background: linear-gradient(180deg, rgba(239,68,68,0.95), rgba(239,68,68,0.8)); }
+.active-alert-card .badge.MEDIUM { background: linear-gradient(180deg, rgba(249,115,22,0.95), rgba(249,115,22,0.8)); }
+.active-alert-card .badge.LOW { background: linear-gradient(180deg, rgba(34,197,94,0.95), rgba(34,197,94,0.8)); }
+
+.active-alert-card .meta { flex: 1 1 auto; }
+.active-alert-card .meta small { color: var(--text-secondary); }
+.active-alert-card .meta .ai { color: var(--text-secondary); margin-top:6px; }
+
+/* ensure active alerts use a consistent stacking order (highest severity -> top)
+   and allow the container to show newest/highest severity at top */
+.active-alerts-panel { display: flex; flex-direction: column; }
+
+/* ensure active panel scroll bar visible but not interfere */
+.active-alerts-panel::-webkit-scrollbar { width: 10px; }
+.active-alerts-panel::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.06); border-radius: 6px; }
+
+/* Alert History Drawer (left slide-in) */
+.alert-history-drawer {
+    position: fixed;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: min(420px, 100%);
+    max-width: 92vw;
+    height: 100vh;
+    transform: translateX(-110%);
+    transition: transform 320ms cubic-bezier(0.22, 1, 0.36, 1), opacity 200ms ease;
+    z-index: 1050;
+    background: linear-gradient(180deg, rgba(2,6,23,0.98), rgba(2,6,23,0.96));
+    border-right: 1px solid var(--border-soft);
+    box-shadow: 8px 0 30px rgba(0,0,0,0.6);
+    display: flex;
+    flex-direction: column;
+
+    /* hide and prevent interaction when closed */
+    opacity: 0;
+    pointer-events: none;
+    visibility: hidden;
+    overflow: hidden;
+}
+.alert-history-drawer.open {
+    transform: translateX(0);
+    opacity: 1;
+    pointer-events: auto;
+    visibility: visible;
+}
+
+/* Ensure header doesn't overflow the drawer */
+.drawer-header { display:flex; align-items:center; gap:12px; padding: 14px 16px; border-bottom: 1px solid rgba(255,255,255,0.04); box-sizing: border-box; }
+.drawer-title { flex: 0 0 auto; max-width: 140px; overflow: hidden; }
+.drawer-title h3 { margin: 0; font-size: 1.05rem; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
+.drawer-sub { font-size: 0.85rem; color: var(--text-secondary); margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* Allow controls to wrap and stay inside drawer */
+.drawer-controls { display:flex; gap:10px; align-items:center; flex: 1 1 auto; justify-content: center; flex-wrap: wrap; }
+.drawer-controls select { min-width: 100px; max-width: 160px; }
+.drawer-controls .drawer-search { min-width: 80px; max-width: 160px; flex: 1 1 120px; }
+.drawer-search { padding: 8px 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.03); background: rgba(255,255,255,0.02); color: var(--text-primary); }
+
+/* Keep the close X inside the header area, no bleed when collapsed */
+.drawer-close-x { background: transparent; border: none; color: var(--text-primary); font-size: 22px; line-height: 1; padding: 6px 10px; cursor: pointer; flex: 0 0 auto; }
+.drawer-close-x:hover { color: var(--accent-red); transform: scale(1.06); }
+
+/* Responsive tweaks: make the controls vertical on narrow widths and ensure X is placed correctly */
+@media (max-width: 700px) {
+    .drawer-controls { flex-direction: column; gap: 8px; align-items: stretch; }
+    .drawer-close-x { position: absolute; right: 10px; top: 8px; }
+}
+
+/* Embedded Alert History inside SideDashboard: scale to dashboard width
+   Note: do NOT force visibility in embedded mode; respect the base `.open` class.
+*/
+.alert-history-drawer.embedded {
+    position: static;
+    transform: none !important;
+    width: 100%;
+    max-width: 100%;
+    height: auto;
+    /* visibility controlled by .open on the parent element */
+    box-shadow: none;
+    border-right: none;
+    padding: 0;
+}
+
+/* hide internal X when embedded — SideDashboard provides its own close control */
+.alert-history-drawer.embedded .drawer-close-x { display: none; }
+
+/* adjust header spacing when embedded */
+.side-dashboard .alert-history-drawer .drawer-header { padding: 12px 6px; }
+.side-dashboard .alert-history-drawer .drawer-controls { justify-content: flex-start; }
+.side-dashboard .alert-history-drawer .drawer-search { max-width: 120px; }
+.side-dashboard .alert-history-drawer .drawer-title { max-width: 120px; }
+
+/* ensure timeline fits within side dashboard body */
+.side-dashboard .drawer-body { padding: 8px; max-height: calc(100vh - 120px); overflow-y: auto; }

@@ -1,11 +1,35 @@
 export type Severity = 'low' | 'medium' | 'high';
 
+export type AlertStatus = 'active' | 'resolved' | 'escalated' | 'unresolved';
+
 export interface Alert {
     id: number;
     severity: Severity;
     message: string;
     recommendedAction: string;
     acknowledged: boolean;
+
+    // New fields for history and lifecycle
+    createdAt: number; // absolute timestamp
+    status: AlertStatus;
+    affectedMetrics: string[]; // e.g., ['Crypto', 'Network']
+    aiDescription?: string;
+    actionsTaken?: string[]; // operator actions associated with this alert
+
+    // resolution fields (populated when resolved/escalated)
+    resolutionTimestamp?: number | null;
+    resolutionSummary?: string | null;
+    confidence?: string | null; // e.g., 'Fully mitigated', 'Partially mitigated'
+
+    // store metric snapshots for timeline / before-after analysis
+    metricSnapshots?: Array<{
+        time: number;
+        stability: number;
+        trust: number;
+        firmwareIntegrity: number;
+        certHealth: number;
+        networkHealth: number;
+    }>;
 }
 
 export interface SystemState {

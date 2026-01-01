@@ -18,9 +18,10 @@ const AlertsPanel: React.FC<Props> = ({ alerts, onAcknowledge }) => {
     const timersRef = useRef<number[]>([]);
 
     useEffect(() => {
+        const timers = timersRef.current;
         return () => {
-            // clear any pending timeouts on unmount
-            timersRef.current.forEach(t => clearTimeout(t));
+            // use the snapshot of timers captured above
+            timers.slice().forEach(t => clearTimeout(t));
         };
     }, []);
 
@@ -40,7 +41,6 @@ const AlertsPanel: React.FC<Props> = ({ alerts, onAcknowledge }) => {
             onAcknowledge(id);
             setClosingIds(prev => prev.filter(x => x !== id));
             setCollapsedIds(prev => prev.filter(x => x !== id));
-            // remove timers for this id
         }, TOTAL_MS);
 
         timersRef.current.push(t1, t2);

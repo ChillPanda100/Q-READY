@@ -10,14 +10,18 @@ import MetricGraph from './components/MetricGraph';
 import type {MetricPoint} from './types';
 import TitlePage from './components/TitlePage';
 import SideDashboard from './components/SideDashboard';
+import AlertHistoryDrawer from './components/AlertHistoryDrawer';
 
 
 let alertId = 0;
 
 const App: React.FC = () => {
-    const [dashboardOpen, setDashboardOpen] = useState(false);
-    const [alerts, setAlerts] = useState<Alert[]>([]);
-    const [system, setSystem] = useState<SystemState>({
+     const [dashboardOpen, setDashboardOpen] = useState(false);
+     const [alertHistoryOpen, setAlertHistoryOpen] = useState(false);
+     const [alerts, setAlerts] = useState<Alert[]>([]);
+     // helper: severity order (high first)
+     // NOTE: previously defined but unused; remove or keep if needed later.
+     const [system, setSystem] = useState<SystemState>({
         stability: 100,
         trustLevel: 100,
         firmwareIntegrity: 100,
@@ -67,18 +71,41 @@ const App: React.FC = () => {
         scenarioEvents.forEach((event: ScenarioEvent) => {
             const id = window.setTimeout(() => {
                 setAlerts((prev): Alert[] => {
-                    // avoid adding duplicate alerts with the same message
-                    if (prev.some(a => a.message === event.message)) return prev;
-                    const newAlert = {
+                     // avoid adding duplicate alerts with the same message
+                     if (prev.some(a => a.message === event.message)) return prev;
+
+                     const newAlert: Alert = {
                         id: ++alertId,
                         severity: event.severity,
                         message: event.message,
                         recommendedAction: event.recommendedAction,
                         acknowledged: false,
-                    } as Alert;
+
+                        createdAt: Date.now(),
+                        status: 'active',
+                        affectedMetrics: [
+                            // infer metric from message keywords (basic heuristic)
+                            ...(event.message.toLowerCase().includes('cert') || event.message.toLowerCase().includes('certificate') || event.message.toLowerCase().includes('ca') ? ['Crypto'] : []),
+                            ...(event.message.toLowerCase().includes('firmware') || event.message.toLowerCase().includes('signature') ? ['Firmware'] : []),
+                            ...(event.message.toLowerCase().includes('network') || event.message.toLowerCase().includes('latency') ? ['Network'] : []),
+                            ...(event.message.toLowerCase().includes('der') || event.message.toLowerCase().includes('grid') ? ['Grid'] : []),
+                        ],
+                        aiDescription: `AI: ${event.message} — consider ${event.recommendedAction}`,
+                        actionsTaken: [],
+                        metricSnapshots: [
+                            {
+                                time: Date.now(),
+                                stability: systemRef.current.stability,
+                                trust: systemRef.current.trustLevel,
+                                firmwareIntegrity: systemRef.current.firmwareIntegrity,
+                                certHealth: systemRef.current.certHealth,
+                                networkHealth: systemRef.current.networkHealth,
+                            }
+                        ],
+                    };
 
                     return [...prev, newAlert];
-                });
+                 });
 
                 setSystem(prev => {
                     const stabilityDelta = event.stabilityDelta ?? -10;
@@ -120,9 +147,60 @@ const App: React.FC = () => {
         };
     }, [started]);
 
+    // auto-open alert history when simulation finishes
+    useEffect(() => {
+        if (finished) {
+            setAlertHistoryOpen(true);
+        }
+    }, [finished]);
+
+    // API to mark alert resolved/escalated from UI or operator actions
+    const resolveAlert = (id: number, summary: string, confidence: string) => {
+        setAlerts(prev => prev.map(a => a.id === id ? {...a, status: 'resolved', resolutionTimestamp: Date.now(), resolutionSummary: summary, confidence, actionsTaken: a.actionsTaken ?? []} : a));
+    };
+
+    const escalateAlert = (id: number, summary?: string) => {
+        setAlerts(prev => prev.map(a => a.id === id ? {...a, status: 'escalated', resolutionTimestamp: Date.now(), resolutionSummary: summary ?? 'Escalated to higher authority', actionsTaken: a.actionsTaken ?? []} : a));
+    };
+
+    // helper that decides whether an alert is resolved given a newly applied action and history
+    const checkResolve = (alert: Alert, appliedAction: string): boolean => {
+        // simple heuristics:
+        const msg = `${alert.recommendedAction} ${alert.message}`.toLowerCase();
+        // if recommendedAction mentions the action name, consider it resolving
+        if (msg.includes(appliedAction)) return true;
+
+        // map some actions to keywords
+        const actionToKeywords: Record<string, string[]> = {
+            rotate: ['rotate', 'rotate keys', 'rotate cryptographic'],
+            renew: ['renew', 'certificate', 'cert'],
+            patch: ['patch'],
+            'mitigate-network': ['mitigate', 'mitigat', 'mitigation'],
+            'restore-routing': ['route', 'routing'],
+            'isolate-segment': ['isolate', 'quarantine'],
+            rollback: ['rollback'],
+            'enforce-pq': ['pq', 'post-quantum', 'enforce'],
+        };
+
+        const keywords = actionToKeywords[appliedAction] || [];
+        for (const kw of keywords) {
+            if (msg.includes(kw)) return true;
+        }
+
+        // special rule: rollback requires prior authorize-emergency action
+        if (appliedAction === 'rollback') {
+            return (alert.actionsTaken || []).includes('authorize-emergency');
+
+        }
+
+        // fallback: if alert recommends 'escalate' and appliedAction is 'escalate', mark escalated (not resolved)
+        if (appliedAction === 'escalate') return false;
+
+        return false;
+    };
+
     const acknowledgeAlert = (id: number) => {
-        // Remove the acknowledged alert from the list so it disappears from the UI
-        // and remaining alerts shift up to fill the gap.
+        // Remove the acknowledged alert from the list (restore previous behavior)
         setAlerts(prev => prev.filter(a => a.id !== id));
     };
 
@@ -252,7 +330,7 @@ const App: React.FC = () => {
                     break;
 
                 case 'acknowledge-ai':
-                    // remove the oldest alert if any
+                    // remove the oldest alert if any (restore previous behavior)
                     setAlerts(prev => prev.slice(1));
                     setSystem(s => ({...s, score: s.score + 2}));
                     break;
@@ -278,7 +356,37 @@ const App: React.FC = () => {
                     networkHealth: systemRef.current.networkHealth,
                 }
             ]);
-        }, timeout);
+
+            // Attach this operator action to all active alerts and check for resolution/escalation
+            setAlerts(prev => prev.map(a => {
+                if (a.status !== 'active') return a;
+                const updated: Alert = {
+                    ...a,
+                    actionsTaken: [...(a.actionsTaken || []), action],
+                    metricSnapshots: [...(a.metricSnapshots || []), {
+                        time: Date.now(),
+                        stability: systemRef.current.stability,
+                        trust: systemRef.current.trustLevel,
+                        firmwareIntegrity: systemRef.current.firmwareIntegrity,
+                        certHealth: systemRef.current.certHealth,
+                        networkHealth: systemRef.current.networkHealth,
+                    }],
+                };
+
+                // check resolution rules
+                const resolved = checkResolve(updated, action);
+                if (resolved) {
+                    return {...updated, status: 'resolved', resolutionTimestamp: Date.now(), resolutionSummary: `Resolved by action ${action}`, confidence: 'Partially mitigated'};
+                }
+
+                // special escalate via action 'escalate' — mark escalated
+                if (action === 'escalate') {
+                    return {...updated, status: 'escalated', resolutionTimestamp: Date.now(), resolutionSummary: 'Operator escalated', confidence: 'N/A'};
+                }
+
+                return updated;
+            }));
+         }, timeout);
 
         // record timer id to clear on unmount
         actionTimersRef.current.push(timerId);
@@ -306,7 +414,10 @@ const App: React.FC = () => {
             </button>
 
             <div className={`side-dashboard-backdrop ${dashboardOpen ? 'open' : ''}`} onClick={() => setDashboardOpen(false)} />
-            <SideDashboard open={dashboardOpen} onClose={() => setDashboardOpen(false)} />
+            <SideDashboard open={dashboardOpen} onClose={() => setDashboardOpen(false)} alerts={alerts} onResolve={resolveAlert} onEscalate={escalateAlert} />
+
+            <AlertHistoryDrawer open={alertHistoryOpen} onClose={() => setAlertHistoryOpen(false)} alerts={alerts} onResolve={resolveAlert} onEscalate={escalateAlert} />
+
             {!started ? (
                 <TitlePage onStart={handleStart} />
             ) : (
@@ -323,10 +434,10 @@ const App: React.FC = () => {
                     {finished && <ScorePanel score={system.score} />}
 
                     <ActionPanel onAction={performAction} inProgress={actionInProgress} system={system} authorizedEmergency={authorizedEmergency} pqOnCooldown={pqOnCooldown} onAuthorize={() => setAuthorizedEmergency(true)} />
-                 </>
-             )}
-         </div>
-     );
- };
+                </>
+            )}
+        </div>
+    );
+};
 
- export default App;
+export default App;
