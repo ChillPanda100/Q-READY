@@ -7,13 +7,14 @@ import ActionPanel from './components/ActionPanel';
 import StatusPanel from './components/StatusPanel.tsx';
 import ScorePanel from './components/ScorePanel';
 import MetricGraph from './components/MetricGraph';
-import type {MetricPoint} from './types';
+import type {MetricPoint, ActionRecord} from './types';
 import TitlePage from './components/TitlePage';
 import SideDashboard from './components/SideDashboard';
 import AlertHistoryDrawer from './components/AlertHistoryDrawer';
 
 
 let alertId = 0;
+let actionId = 0;
 
 const App: React.FC = () => {
      const [dashboardOpen, setDashboardOpen] = useState(false);
@@ -38,6 +39,8 @@ const App: React.FC = () => {
     const [authorizedEmergency, setAuthorizedEmergency] = useState<boolean>(false);
     const [pqOnCooldown, setPqOnCooldown] = useState<boolean>(false);
     const pqCooldownRef = useRef<number | null>(null);
+    const [actionsHistory, setActionsHistory] = useState<ActionRecord[]>([]);
+    const [dashboardActiveTab, setDashboardActiveTab] = useState<'alerts' | 'actions' | undefined>(undefined);
 
     // keep ref synced so interval can read latest values without re-creating
     useEffect(() => {
@@ -205,10 +208,27 @@ const App: React.FC = () => {
     };
 
     const performAction = (action: string) => {
-        // if already running, ignore
-        if (actionInProgress[action]) return;
-        // mark as in-progress
-        setActionInProgress(prev => ({...prev, [action]: true}));
+         // if already running, ignore
+         if (actionInProgress[action]) return;
+         // mark as in-progress
+         setActionInProgress(prev => ({...prev, [action]: true}));
+
+        // open dashboard and switch to Actions tab so user sees activity immediately
+        setDashboardOpen(true);
+        setDashboardActiveTab('actions');
+
+        // create a placeholder action record immediately so it appears in history
+        const thisActionId = ++actionId;
+        const initialRecord: ActionRecord = {
+            id: thisActionId,
+            action,
+            label: action.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase()),
+            time: Date.now(),
+            triggeredBy: 'Operator',
+            affectedMetrics: [],
+            results: ['⟳ In progress...'],
+        };
+        setActionsHistory(prev => [initialRecord, ...prev]);
 
         // record a snapshot immediately (pre-action) including all metrics
         setMetrics(prev => [
@@ -395,6 +415,11 @@ const App: React.FC = () => {
     };
     // end performAction
 
+    // handler exposed to drawers/panels to perform actions
+    const handlePerformAction = (action: string) => {
+        performAction(action);
+    };
+
     // cleanup pq cooldown timer on unmount
     useEffect(() => {
         return () => {
@@ -414,7 +439,7 @@ const App: React.FC = () => {
             </button>
 
             <div className={`side-dashboard-backdrop ${dashboardOpen ? 'open' : ''}`} onClick={() => setDashboardOpen(false)} />
-            <SideDashboard open={dashboardOpen} onClose={() => setDashboardOpen(false)} alerts={alerts} onResolve={resolveAlert} onEscalate={escalateAlert} />
+            <SideDashboard open={dashboardOpen} activeTab={dashboardActiveTab} onClose={() => { setDashboardOpen(false); setDashboardActiveTab(undefined); }} alerts={alerts} actions={actionsHistory} onResolve={resolveAlert} onEscalate={escalateAlert} onPerformAction={handlePerformAction} />
 
             <AlertHistoryDrawer open={alertHistoryOpen} onClose={() => setAlertHistoryOpen(false)} alerts={alerts} onResolve={resolveAlert} onEscalate={escalateAlert} />
 

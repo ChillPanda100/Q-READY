@@ -49,3 +49,13 @@ export interface MetricPoint {
     certHealth: number;
     networkHealth: number;
 }
+
+export interface ActionRecord {
+    id: number;
+    action: string; // canonical action key e.g., 'rotate'
+    label: string; // human-friendly label
+    time: number; // timestamp
+    triggeredBy: 'Operator' | 'AI' | 'System';
+    affectedMetrics: string[]; // human-readable metric change strings
+    results: string[]; // result summary lines (check/x markers)
+}

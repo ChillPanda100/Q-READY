@@ -1,4 +1,4 @@
-import React, {useMemo, useState} from 'react';
+import React, {useMemo, useState, useEffect} from 'react';
 import type {Alert} from '../types';
 
 interface Props {
@@ -11,9 +11,16 @@ interface Props {
 }
 
 const AlertHistoryDrawer: React.FC<Props> = ({ open, onClose, alerts, onResolve, onEscalate, embedded = false }) => {
-    const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'resolved' | 'escalated' | 'unresolved'>('all');
+    // default status filter when embedded should show active alerts first
+    const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'resolved' | 'escalated' | 'unresolved'>(() => embedded ? 'active' : 'all');
     const [filterMetric, setFilterMetric] = useState<'all' | 'Grid' | 'Crypto' | 'Firmware' | 'Network'>('all');
     const [search, setSearch] = useState('');
+
+    // selected alert id for focus/highlight inside embedded dashboard
+    const [selectedAlertId, setSelectedAlertId] = useState<number | null>(null);
+
+    // severity ordering: lower number = higher priority
+    const severityOrder: Record<string, number> = { high: 0, medium: 1, low: 2 };
 
     const filtered = useMemo(() => {
         return alerts.filter(a => {
@@ -26,6 +33,71 @@ const AlertHistoryDrawer: React.FC<Props> = ({ open, onClose, alerts, onResolve,
             return true;
         }).sort((x, y) => (y.createdAt - x.createdAt));
     }, [alerts, filterStatus, filterMetric, search]);
+
+    // when the drawer opens in embedded mode, pick the first active alert as selected
+    useEffect(() => {
+        if (!embedded) return;
+        if (!open) return;
+
+        // prefer the highest-severity active alert (then newest)
+        const activeAlerts = alerts.filter(a => a.status === 'active').slice().sort((a, b) => {
+            const s = (severityOrder[a.severity] ?? 99) - (severityOrder[b.severity] ?? 99);
+            if (s !== 0) return s;
+            return b.createdAt - a.createdAt;
+        });
+
+        const firstActive = activeAlerts[0];
+        if (firstActive) {
+            setSelectedAlertId(firstActive.id);
+            // scroll into view after render
+            setTimeout(() => {
+                const el = document.getElementById(`timeline-entry-${firstActive.id}`);
+                if (el && typeof (el.scrollIntoView) === 'function') {
+                    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            }, 50);
+        } else if (filtered.length > 0) {
+            // fallback to first filtered alert (choose highest-severity among filtered)
+            const filtSorted = filtered.slice().sort((a, b) => {
+                const s = (severityOrder[a.severity] ?? 99) - (severityOrder[b.severity] ?? 99);
+                if (s !== 0) return s;
+                return b.createdAt - a.createdAt;
+            });
+            setSelectedAlertId(filtSorted[0].id);
+            setTimeout(() => {
+                const el = document.getElementById(`timeline-entry-${filtSorted[0].id}`);
+                if (el && typeof (el.scrollIntoView) === 'function') {
+                    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            }, 50);
+        } else {
+            setSelectedAlertId(null);
+        }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [embedded, open, alerts]);
+
+    // when filters change and embedded, keep selection on the first visible active alert
+    useEffect(() => {
+        if (!embedded || !open) return;
+        // prefer highest-severity active among filtered, otherwise first filtered
+        const activeInFiltered = filtered.filter(a => a.status === 'active');
+        const pickList = (activeInFiltered.length ? activeInFiltered : filtered).slice();
+        const first = pickList.sort((a, b) => {
+            const s = (severityOrder[a.severity] ?? 99) - (severityOrder[b.severity] ?? 99);
+            if (s !== 0) return s;
+            return b.createdAt - a.createdAt;
+        })[0];
+        if (first) {
+            setSelectedAlertId(first.id);
+            setTimeout(() => {
+                const el = document.getElementById(`timeline-entry-${first.id}`);
+                if (el && typeof (el.scrollIntoView) === 'function') el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }, 50);
+        } else {
+            setSelectedAlertId(null);
+        }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [filtered.length, embedded, open]);
 
     return (
         <div className={`alert-history-drawer ${open ? 'open' : ''} ${embedded ? 'embedded' : ''}`} aria-hidden={!open}>
@@ -61,7 +133,7 @@ const AlertHistoryDrawer: React.FC<Props> = ({ open, onClose, alerts, onResolve,
             <div className="drawer-body">
                 <div className="timeline">
                     {filtered.map(alert => (
-                        <div key={alert.id} className={`timeline-entry ${alert.status}`}>
+                        <div id={`timeline-entry-${alert.id}`} key={alert.id} className={`timeline-entry ${alert.status} ${selectedAlertId === alert.id ? 'selected' : ''}`} onClick={() => setSelectedAlertId(alert.id)}>
                             <div className="entry-meta">
                                 <div className="severity">{alert.severity.toUpperCase()}</div>
                                 <div className="time">{new Date(alert.createdAt).toLocaleString()}</div>
