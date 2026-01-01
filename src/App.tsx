@@ -219,6 +219,7 @@ const App: React.FC = () => {
 
         // create a placeholder action record immediately so it appears in history
         const thisActionId = ++actionId;
+        const preSystemSnapshot = { ...systemRef.current };
         const initialRecord: ActionRecord = {
             id: thisActionId,
             action,
@@ -406,6 +407,106 @@ const App: React.FC = () => {
 
                 return updated;
             }));
+
+            // compute metric deltas and update the action record in history to mark success
+            try {
+                // wait briefly for React state to update and systemRef to be synced via useEffect
+                const deltaTimer = window.setTimeout(() => {
+                    // compute 'after' snapshot deterministically based on the pre-action snapshot
+                    const computeAfter = (actionKey: string, before: SystemState) : SystemState => {
+                        // start with copy
+                        const after = { ...before };
+                        switch (actionKey) {
+                            case 'rotate':
+                                after.trustLevel = Math.min(100, after.trustLevel + 22);
+                                after.networkHealth = Math.max(0, after.networkHealth - 6);
+                                break;
+                            case 'limit':
+                                after.stability = Math.min(100, after.stability + 12);
+                                break;
+                            case 'reboot':
+                                after.stability = Math.min(100, after.stability + 22);
+                                after.firmwareIntegrity = Math.max(0, after.firmwareIntegrity - 12);
+                                after.networkHealth = Math.max(0, after.networkHealth - 18);
+                                break;
+                            case 'isolate-segment':
+                                after.stability = Math.min(100, after.stability + 10);
+                                after.networkHealth = Math.max(0, after.networkHealth - 10);
+                                break;
+                            case 'restore-autonomy':
+                                after.stability = Math.max(0, after.stability - 5);
+                                after.networkHealth = Math.min(100, after.networkHealth + 8);
+                                break;
+                            case 'renew':
+                                after.certHealth = Math.min(100, after.certHealth + 25);
+                                after.trustLevel = Math.min(100, after.trustLevel + 12);
+                                break;
+                            case 'enforce-pq':
+                                if (authorizedEmergency && !pqOnCooldown) {
+                                    after.trustLevel = Math.min(100, after.trustLevel + 28);
+                                    after.networkHealth = Math.max(0, after.networkHealth - 30);
+                                }
+                                break;
+                            case 'patch':
+                                after.firmwareIntegrity = Math.min(100, after.firmwareIntegrity + 30);
+                                after.stability = Math.max(0, after.stability - 10);
+                                after.networkHealth = Math.max(0, after.networkHealth - 8);
+                                break;
+                            case 'verify-signatures':
+                                after.firmwareIntegrity = Math.min(100, after.firmwareIntegrity + 8);
+                                after.trustLevel = Math.min(100, after.trustLevel + 5);
+                                break;
+                            case 'rollback':
+                                if (authorizedEmergency) {
+                                    after.firmwareIntegrity = Math.min(100, after.firmwareIntegrity + 15);
+                                    after.stability = Math.max(0, after.stability - 25);
+                                }
+                                break;
+                            case 'mitigate-network':
+                                after.networkHealth = Math.min(100, after.networkHealth + 25);
+                                after.stability = Math.min(100, after.stability + 8);
+                                break;
+                            case 'segment-network':
+                                after.networkHealth = Math.min(100, after.networkHealth + 10);
+                                after.stability = Math.max(0, after.stability - 8);
+                                break;
+                            case 'restore-routing':
+                                after.networkHealth = Math.min(100, after.networkHealth + 18);
+                                after.stability = Math.min(100, after.stability + 10);
+                                break;
+                            // default: no metric changes
+                        }
+
+                        return after;
+                    };
+
+                    const after = computeAfter(action, preSystemSnapshot);
+                     const deltas: string[] = [];
+                     const pushDelta = (name: string, before: number | undefined, afterVal: number | undefined) => {
+                         if (typeof before !== 'number' || typeof afterVal !== 'number') return;
+                         const diff = Math.round(afterVal - before);
+                         if (diff === 0) return;
+                         const sign = diff > 0 ? '+' : '';
+                         deltas.push(`${name}: ${sign}${diff}`);
+                     };
+
+                     pushDelta('Stability', preSystemSnapshot.stability, after.stability);
+                     pushDelta('Trust', preSystemSnapshot.trustLevel, after.trustLevel);
+                     pushDelta('Firmware', preSystemSnapshot.firmwareIntegrity, after.firmwareIntegrity);
+                     pushDelta('Cert Health', preSystemSnapshot.certHealth, after.certHealth);
+                     pushDelta('Network', preSystemSnapshot.networkHealth, after.networkHealth);
+
+                    // Only put the completion status in `results`; store deltas in `affectedMetrics` (or a fallback)
+                    const resultsLines = ['✔ Completed'];
+
+                    setActionsHistory(prev => prev.map(r => r.id === thisActionId ? {...r, affectedMetrics: deltas.length ? deltas : ['No significant metric changes'], results: resultsLines} : r));
+                 }, 40);
+
+                 actionTimersRef.current.push(deltaTimer);
+             } catch (err) {
+                 // non-fatal: leave the record as-is
+                 console.error('Failed to compute action deltas', err);
+             }
          }, timeout);
 
         // record timer id to clear on unmount
