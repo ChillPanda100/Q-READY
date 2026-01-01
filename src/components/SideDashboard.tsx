@@ -14,7 +14,7 @@ interface SideDashboardProps {
     onPerformAction?: (action: string) => void;
 }
 
-const SideDashboard: React.FC<SideDashboardProps> = ({ open, onClose, alerts = [], actions = [], activeTab, onResolve = () => {}, onEscalate = () => {}, onPerformAction = () => {} }) => {
+const SideDashboard: React.FC<SideDashboardProps> = ({ open, onClose, alerts = [], actions = [], activeTab, onResolve = () => {}, onEscalate = () => {} }) => {
     const [tab, setTab] = useState<'alerts' | 'actions'>(activeTab ?? 'alerts');
 
     // keep tab in sync when parent controls activeTab
@@ -34,7 +34,7 @@ const SideDashboard: React.FC<SideDashboardProps> = ({ open, onClose, alerts = [
             </div>
             <div className="side-dashboard-body">
                 {tab === 'alerts' ? (
-                    <AlertHistoryDrawer open={open} onClose={onClose} alerts={alerts} onResolve={onResolve} onEscalate={onEscalate} embedded onPerformAction={onPerformAction} />
+                    <AlertHistoryDrawer open={open} onClose={onClose} alerts={alerts} onResolve={onResolve} onEscalate={onEscalate} embedded />
                 ) : (
                     <ActionHistoryPanel actions={actions} />
                 )}
