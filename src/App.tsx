@@ -9,11 +9,13 @@ import ScorePanel from './components/ScorePanel';
 import MetricGraph from './components/MetricGraph';
 import type {MetricPoint} from './types';
 import TitlePage from './components/TitlePage';
+import SideDashboard from './components/SideDashboard';
 
 
 let alertId = 0;
 
 const App: React.FC = () => {
+    const [dashboardOpen, setDashboardOpen] = useState(false);
     const [alerts, setAlerts] = useState<Alert[]>([]);
     const [system, setSystem] = useState<SystemState>({
         stability: 100,
@@ -64,19 +66,18 @@ const App: React.FC = () => {
 
         scenarioEvents.forEach((event: ScenarioEvent) => {
             const id = window.setTimeout(() => {
-                setAlerts(prev => {
+                setAlerts((prev): Alert[] => {
                     // avoid adding duplicate alerts with the same message
                     if (prev.some(a => a.message === event.message)) return prev;
-                    return [
-                        ...prev,
-                        {
-                            id: ++alertId,
-                            severity: event.severity,
-                            message: event.message,
-                            recommendedAction: event.recommendedAction,
-                            acknowledged: false,
-                        },
-                    ];
+                    const newAlert = {
+                        id: ++alertId,
+                        severity: event.severity,
+                        message: event.message,
+                        recommendedAction: event.recommendedAction,
+                        acknowledged: false,
+                    } as Alert;
+
+                    return [...prev, newAlert];
                 });
 
                 setSystem(prev => {
@@ -296,7 +297,16 @@ const App: React.FC = () => {
     const handleStart = () => setStarted(true);
 
     return (
-        <div className="app">
+        <div className={`app ${dashboardOpen ? 'dashboard-open' : ''}`}>
+            {/* top-left hamburger to toggle side dashboard */}
+            <button className="hamburger" aria-label="Open dashboard" onClick={() => setDashboardOpen(true)}>
+                <span className="bar" />
+                <span className="bar" />
+                <span className="bar" />
+            </button>
+
+            <div className={`side-dashboard-backdrop ${dashboardOpen ? 'open' : ''}`} onClick={() => setDashboardOpen(false)} />
+            <SideDashboard open={dashboardOpen} onClose={() => setDashboardOpen(false)} />
             {!started ? (
                 <TitlePage onStart={handleStart} />
             ) : (
@@ -319,4 +329,4 @@ const App: React.FC = () => {
      );
  };
 
-export default App;
+ export default App;

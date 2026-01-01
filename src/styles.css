@@ -384,3 +384,68 @@ button:hover {
         grid-template-columns: repeat(2, 1fr);
     }
 }
+
+/* Top-left hamburger menu */
+.hamburger {
+    position: fixed;
+    top: 18px;
+    left: 18px;
+    z-index: 1100;
+    width: 44px;
+    height: 40px;
+    display: inline-flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 4px;
+    padding: 6px;
+    background: rgba(2,6,23,0.85);
+    border: 1px solid var(--border-soft);
+    border-radius: 8px;
+    cursor: pointer;
+}
+.hamburger .bar {
+    display: block;
+    width: 20px;
+    height: 2px;
+    background: var(--text-primary);
+    border-radius: 2px;
+}
+.hamburger:focus { outline: 2px solid var(--accent-focus); }
+
+/* When the dashboard is open, hide the hamburger button so it doesn't overlap the drawer */
+.app.dashboard-open .hamburger { display: none; }
+
+/* Side dashboard drawer */
+.side-dashboard {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100vh;
+    width: 320px;
+    max-width: calc(100% - 40px);
+    transform: translateX(-110%);
+    transition: transform 320ms cubic-bezier(0.22, 1, 0.36, 1);
+    z-index: 1050;
+    padding: 18px;
+    background: linear-gradient(180deg, rgba(2,6,23,0.96), rgba(2,6,23,0.9));
+    border-right: 1px solid var(--border-soft);
+    box-shadow: 8px 0 30px rgba(0,0,0,0.6);
+}
+.side-dashboard.open { transform: translateX(0); }
+.side-dashboard-header { display:flex; align-items:center; justify-content:space-between; }
+.side-dashboard-header h3 { margin:0; font-size:1.05rem; }
+.close-drawer { background: transparent; border: none; color: var(--text-primary); font-size: 20px; cursor: pointer; }
+.side-dashboard-body { margin-top: 12px; color: var(--text-secondary); }
+
+/* add a backdrop to dim the app when drawer is open */
+.side-dashboard-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.45);
+    z-index: 1040;
+    opacity: 0;
+    transition: opacity 240ms ease;
+    pointer-events: none;
+}
+.side-dashboard-backdrop.open { opacity: 1; pointer-events: auto; }
