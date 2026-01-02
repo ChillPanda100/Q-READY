@@ -150,13 +150,6 @@ const App: React.FC = () => {
         };
     }, [started]);
 
-    // auto-open alert history when simulation finishes
-    useEffect(() => {
-        if (finished) {
-            setAlertHistoryOpen(true);
-        }
-    }, [finished]);
-
     // API to mark alert resolved/escalated from UI or operator actions
     const resolveAlert = (id: number, summary: string, confidence: string) => {
         setAlerts(prev => prev.map(a => a.id === id ? {...a, status: 'resolved', resolutionTimestamp: Date.now(), resolutionSummary: summary, confidence, actionsTaken: a.actionsTaken ?? []} : a));
