@@ -15,6 +15,9 @@
     --accent-orange: #f97316;
     --accent-red: #ef4444;
 
+    /* default accent fallback used by static analysis */
+    --accent: var(--accent-blue);
+
     --border-soft: rgba(255, 255, 255, 0.06);
     /* shadow/focus fallbacks used by hover/focus styles */
     --accent-shadow: rgba(0,0,0,0.12);
@@ -696,3 +699,112 @@ body.using-mouse *:focus {
 
 /* Also ensure timeline entries never show an outline when clicked */
 .timeline-entry:focus { outline: none; box-shadow: none; }
+
+/* Modern checkbox styling for metric toggles (updated: use span::before/::after for visuals)
+   - input remains in the DOM (accessible) but is visually hidden
+   - the label's span renders the custom box and checkmark so we can style based on input:checked
+*/
+.metric-toggle {
+    --size: 16px;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    user-select: none;
+    position: relative;
+}
+.metric-toggle input[type="checkbox"] {
+    /* keep the native input for accessibility, but visually hide it */
+    position: absolute;
+    opacity: 0;
+    width: var(--size);
+    height: var(--size);
+    margin: 0;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    pointer-events: auto; /* allow clicks */
+}
+
+.metric-toggle span {
+    position: relative;
+    padding-left: calc(var(--size) + 10px);
+    transition: opacity 160ms ease, transform 160ms ease;
+    display: inline-block;
+}
+
+/* checkbox box rendered inside span::before */
+.metric-toggle span::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    width: var(--size);
+    height: var(--size);
+    border-radius: 6px;
+    border: 1px solid rgba(255,255,255,0.08);
+    background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+    box-shadow: 0 2px 6px rgba(0,0,0,0.35) inset;
+    transition: background 160ms ease, border-color 160ms ease, box-shadow 200ms ease, transform 160ms ease;
+    display: block;
+}
+
+/* the checkmark */
+.metric-toggle span::after {
+    content: '';
+    position: absolute;
+    left: 3px;
+    top: 50%;
+    transform: translateY(-50%) scale(0);
+    width: calc(var(--size) - 6px);
+    height: calc(var(--size) - 6px);
+    background-repeat: no-repeat;
+    background-position: center;
+    transition: transform 120ms ease, opacity 120ms ease;
+}
+
+/* when checked, color the box with the --accent and show the white checkmark */
+.metric-toggle input[type="checkbox"]:checked + span::before {
+    background: var(--accent, #3b82f6);
+    border-color: var(--accent, #3b82f6);
+    transform: translateY(-50%) scale(1.02);
+    box-shadow: 0 6px 18px rgba(0,0,0,0.45), 0 0 18px rgba(0,0,0,0.08), 0 6px 18px var(--accent, #3b82f6);
+}
+.metric-toggle input[type="checkbox"]:checked + span::after {
+    transform: translateY(-50%) scale(1);
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23ffffff' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'><polyline points='20 6 9 17 4 12'/></svg>");
+    opacity: 1;
+}
+
+/* hover/active affordances */
+.metric-toggle:hover span::before {
+    border-color: rgba(255,255,255,0.12);
+    transform: translateY(-50%) translateY(-1px);
+}
+.metric-toggle input[type="checkbox"]:focus + span::before {
+    outline: 2px solid rgba(255,255,255,0.06);
+    outline-offset: 2px;
+}
+
+/* Force metric-toggle glow to be invisible: override any colored shadows or filters */
+.metric-toggle span::before,
+.metric-toggle input[type="checkbox"]:checked + span::before,
+.metric-toggle:hover span::before {
+    box-shadow: none !important;
+    filter: none !important;
+}
+.metric-toggle input[type="checkbox"]:checked + span::after {
+    /* ensure checkmark or dot has no glow/blur; keep color but make it flat */
+    box-shadow: none !important;
+    filter: none !important;
+}
+/* remove any accidental text-shadow or outer glows on label text when checked */
+.metric-toggle input[type="checkbox"]:checked + span,
+.metric-toggle span {
+    text-shadow: none !important;
+}
+
+@media (hover: none) {
+    .metric-toggle { --size: 20px; }
+}

@@ -141,60 +141,11 @@ const MetricGraph: React.FC<Props> = ({data}) => {
     const labelDelayOffset = 6;
     const baseXTickDelay = 8;
 
-    // responsive metric selector: switch to compact dropdown on narrow screens
-    const [isNarrow, setIsNarrow] = useState<boolean>(() => typeof window !== 'undefined' ? window.innerWidth < 760 : false);
-    const [metricsMenuOpen, setMetricsMenuOpen] = useState(false);
-    const menuRef = useRef<HTMLDivElement | null>(null);
-
-    useEffect(() => {
-        const onResize = () => setIsNarrow(window.innerWidth < 760);
-        window.addEventListener('resize', onResize);
-        return () => window.removeEventListener('resize', onResize);
-    }, []);
-
-    // close menu on outside click
-    useEffect(() => {
-        if (!metricsMenuOpen) return;
-        const onDoc = (ev: MouseEvent) => {
-            if (!menuRef.current) return;
-            if (!menuRef.current.contains(ev.target as Node)) setMetricsMenuOpen(false);
-        };
-        document.addEventListener('mousedown', onDoc);
-        return () => document.removeEventListener('mousedown', onDoc);
-    }, [metricsMenuOpen]);
-
     return (
         <div className="panel metric-panel">
             <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'relative'}}>
                 <h2 style={{margin: 0}}>Live System Metrics</h2>
                 <div style={{display: 'flex', gap: 12, alignItems: 'center'}}>
-                    {/* Metric selection checkboxes (desktop) or compact dropdown (narrow) */}
-                    {!isNarrow ? (
-                        <div style={{display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap'}}>
-                            {metricsMeta.map(m => (
-                                <label key={m.key} style={{display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--text-primary)'}}>
-                                    <input type="checkbox" checked={visibleMetrics[m.key]} onChange={() => toggleMetric(m.key)} />
-                                    <span style={{color: m.color}}>{m.label}</span>
-                                </label>
-                            ))}
-                        </div>
-                    ) : (
-                        <div style={{position: 'relative'}} ref={menuRef}>
-                            <button onClick={() => setMetricsMenuOpen(s => !s)} aria-expanded={metricsMenuOpen} style={{padding: '6px 10px'}}>Metrics ▾</button>
-                            {metricsMenuOpen && (
-                                <div style={{position: 'absolute', right: 0, top: 'calc(100% + 8px)', background: 'var(--bg-panel)', border: '1px solid var(--border-soft)', padding: 10, borderRadius: 8, boxShadow: '0 8px 24px rgba(2,6,23,0.6)', zIndex: 60, minWidth: 200}}>
-                                    <div style={{display: 'flex', flexDirection: 'column', gap: 8}}>
-                                        {metricsMeta.map(m => (
-                                            <label key={m.key} style={{display: 'flex', alignItems: 'center', gap: 8, fontSize: 13}}>
-                                                <input type="checkbox" checked={visibleMetrics[m.key]} onChange={() => toggleMetric(m.key)} />
-                                                <span style={{color: m.color}}>{m.label}</span>
-                                            </label>
-                                        ))}
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-                    )}
                     <div style={{display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4}}>
                         <div style={{fontSize: 12, color: 'var(--text-secondary)'}}>Window: {readableDuration(windowMs)}</div>
                         <div style={{fontSize: 11, color: 'var(--text-secondary)', opacity: 0.9}}>Zoom: mouse wheel • + / - keys</div>
@@ -279,13 +230,14 @@ const MetricGraph: React.FC<Props> = ({data}) => {
 
             <div style={{display: 'flex', gap: '12px', marginTop: '8px', fontSize: '0.85rem', flexWrap: 'wrap'}}>
                 {metricsMeta.map(m => (
-                    <button key={m.key} onClick={() => toggleMetric(m.key)} style={{background: 'transparent', border: 'none', padding: 0, color: visibleMetrics[m.key] ? m.color : 'rgba(156,163,175,0.6)', cursor: 'pointer'}}>
-                        ● {m.label}
-                    </button>
-                ))}
-            </div>
-        </div>
-    );
-};
+                    <label key={m.key} className="metric-toggle" style={{ ...( { ['--accent']: m.color } as React.CSSProperties), fontSize: 13}}>
+                         <input type="checkbox" checked={visibleMetrics[m.key]} onChange={() => toggleMetric(m.key)} />
+                         <span style={{color: visibleMetrics[m.key] ? m.color : 'rgba(156,163,175,0.6)'}}>{m.label}</span>
+                     </label>
+                 ))}
+             </div>
+         </div>
+     );
+ };
 
 export default MetricGraph;
