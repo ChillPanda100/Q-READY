@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
-  "homepage": "https://ChillPanda100.github.io/q-ready",
+  "homepage": "https://ChillPanda100.github.io/Q-READY",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
