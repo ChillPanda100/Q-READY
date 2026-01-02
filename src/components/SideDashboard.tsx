@@ -24,6 +24,39 @@ const SideDashboard: React.FC<SideDashboardProps> = ({ open, onClose, alerts = [
 
     const alertsRef = useRef<HTMLButtonElement | null>(null);
     const actionsRef = useRef<HTMLButtonElement | null>(null);
+    const prevLatestActionId = useRef<number | null>(null);
+
+    // If a new action is taken, automatically switch to the Actions tab (if not already on it)
+    React.useEffect(() => {
+        if (!actions || actions.length === 0) {
+            prevLatestActionId.current = null;
+            return;
+        }
+
+        // find most recent action by time
+        let latest = actions[0];
+        for (let i = 1; i < actions.length; i++) {
+            const curr = actions[i];
+            const currTime = new Date(curr.time).getTime();
+            const latestTime = new Date(latest.time).getTime();
+            if (!isNaN(currTime) && currTime > latestTime) latest = curr;
+        }
+
+        const latestId = latest.id;
+        const prev = prevLatestActionId.current;
+
+        if (prev == null || latestId !== prev) {
+            // a new action was taken — switch to actions tab if not already there
+            if (tab !== 'actions') {
+                setTab('actions');
+                // focus the actions tab button for accessibility
+                setTimeout(() => actionsRef.current?.focus(), 50);
+            }
+        }
+
+        prevLatestActionId.current = latestId;
+    // include tab so we can check current tab before switching
+    }, [actions, tab]);
 
     const onTabKeyDown = (e: React.KeyboardEvent) => {
         switch (e.key) {
