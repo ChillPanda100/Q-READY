@@ -26,7 +26,7 @@ const ActionHistoryPanel: React.FC<Props> = ({ actions }) => {
                 // Only show standardized status under Results: either In progress or ✔ Completed
                 let statusLabel: string | null = null;
                 if (inProgress) {
-                    statusLabel = '⟳ In progress...';
+                    statusLabel = 'In progress...';
                 } else if (completed) {
                     statusLabel = '✔ Completed';
                 }
@@ -61,7 +61,7 @@ const ActionHistoryPanel: React.FC<Props> = ({ actions }) => {
                                             return <li key={i} style={{ color: 'var(--text-primary)' }}>{m}</li>;
                                         })
                                     ) : (
-                                        <li style={{ color: 'var(--text-secondary)' }}>No significant metric changes</li>
+                                        <li style={{ color: 'var(--text-secondary)' }}>{inProgress ? 'Pending...' : 'No significant metric changes'}</li>
                                     )}
                                 </ul>
                             </div>
@@ -69,7 +69,15 @@ const ActionHistoryPanel: React.FC<Props> = ({ actions }) => {
                             <div>
                                 <div style={{ fontWeight: 600 }}>Result:</div>
                                 <ul style={{ marginTop: 6 }}>
-                                    {statusLabel ? <li style={{ color: statusLabel.startsWith('✔') ? 'var(--accent-green)' : 'var(--text-primary)' }}>{statusLabel}</li> : null}
+                                    {statusLabel ? (
+                                        <li style={{ color: statusLabel.startsWith('✔') ? 'var(--accent-green)' : 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                                            {inProgress && (
+                                                <span className="spinner" aria-hidden="true" />
+                                            )}
+
+                                            <span>{statusLabel}</span>
+                                        </li>
+                                    ) : null}
                                 </ul>
                             </div>
                         </div>

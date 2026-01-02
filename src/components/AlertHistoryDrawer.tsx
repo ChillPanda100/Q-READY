@@ -123,30 +123,31 @@ const AlertHistoryDrawer: React.FC<Props> = ({ open, onClose, alerts, onResolve,
     return (
         <div className={`alert-history-drawer ${open ? 'open' : ''} ${embedded ? 'embedded' : ''}`} aria-hidden={!open}>
             <div className="drawer-header">
-                <div className="drawer-title">
-                    <h3>Alert History</h3>
-                    <div className="drawer-sub">Forensics & Post-incident Review</div>
-                </div>
+                 <div className="drawer-controls">
+                     <select value={filterStatus} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setFilterStatus(e.target.value as 'all' | 'active' | 'resolved' | 'escalated' | 'unresolved')}>
+                         <option value="all">All</option>
+                         <option value="active">Active</option>
+                         <option value="resolved">Resolved</option>
+                         <option value="escalated">Escalated</option>
+                         <option value="unresolved">Unresolved</option>
+                     </select>
 
-                <div className="drawer-controls">
-                    <select value={filterStatus} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setFilterStatus(e.target.value as 'all' | 'active' | 'resolved' | 'escalated' | 'unresolved')}>
-                        <option value="all">All</option>
-                        <option value="active">Active</option>
-                        <option value="resolved">Resolved</option>
-                        <option value="escalated">Escalated</option>
-                        <option value="unresolved">Unresolved</option>
-                    </select>
+                     <select value={filterMetric} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setFilterMetric(e.target.value as 'all' | 'Grid' | 'Crypto' | 'Firmware' | 'Network')}>
+                         <option value="all">All Metrics</option>
+                         <option value="Grid">Grid</option>
+                         <option value="Crypto">Crypto</option>
+                         <option value="Firmware">Firmware</option>
+                         <option value="Network">Network</option>
+                     </select>
 
-                    <select value={filterMetric} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setFilterMetric(e.target.value as 'all' | 'Grid' | 'Crypto' | 'Firmware' | 'Network')}>
-                        <option value="all">All Metrics</option>
-                        <option value="Grid">Grid</option>
-                        <option value="Crypto">Crypto</option>
-                        <option value="Firmware">Firmware</option>
-                        <option value="Network">Network</option>
-                    </select>
-
-                    <input className="drawer-search" placeholder="Search alerts" value={search} onChange={e => setSearch(e.target.value)} />
-                </div>
+                     <label className="drawer-search-wrapper" htmlFor="drawer-search-input">
+                         <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg">
+                             <path d="M21 21l-4.35-4.35" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+                             <circle cx="11" cy="11" r="6" stroke="currentColor" strokeWidth="1.6" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+                         </svg>
+                         <input id="drawer-search-input" className="drawer-search" placeholder="Search alerts" value={search} onChange={e => setSearch(e.target.value)} aria-label="Search alerts" />
+                     </label>
+                 </div>
 
                 <button className="drawer-close-x" aria-label="Close alert history" onClick={onClose}>×</button>
             </div>
@@ -187,9 +188,16 @@ const AlertHistoryDrawer: React.FC<Props> = ({ open, onClose, alerts, onResolve,
                                         <div style={{ marginTop: 8 }}>
                                             <div style={{ fontWeight: 600 }}>Affected Metrics:</div>
                                             <ul style={{ marginTop: 6, marginBottom: 6 }}>
-                                                {alert.affectedMetrics.map((m, i) => (
-                                                    <li key={i} style={{ color: 'var(--text-primary)' }}>{m}</li>
-                                                ))}
+                                                {alert.affectedMetrics.length === 0 && alert.status === 'active' ? (
+                                                    <li style={{ display: 'flex', alignItems: 'center', color: 'var(--text-secondary)', fontSize: 14 }}>
+                                                        <span className="spinner" style={{ marginRight: 8 }} aria-hidden="true" />
+                                                        <span>Pending...</span>
+                                                    </li>
+                                                ) : (
+                                                    alert.affectedMetrics.map((m, i) => (
+                                                        <li key={i} style={{ color: 'var(--text-primary)' }}>{m}</li>
+                                                    ))
+                                                )}
                                             </ul>
                                         </div>
 
@@ -233,15 +241,35 @@ const AlertHistoryDrawer: React.FC<Props> = ({ open, onClose, alerts, onResolve,
                                 <div className="entry-meta">
                                     <div className="severity">{alert.severity.toUpperCase()}</div>
                                     <div className="time">{new Date(alert.createdAt).toLocaleString()}</div>
-                                    <div className="status">{alert.status.toUpperCase()}</div>
-                                </div>
-                                <div className="entry-body">
-                                    <strong>{alert.message}</strong>
-                                    <p style={{ color: 'var(--text-secondary)' }}>{alert.aiDescription}</p>
-                                    <p><em>Affected:</em> {alert.affectedMetrics.join(', ')}</p>
-                                    <p><em>Recommended:</em> {alert.recommendedAction}</p>
+                                    <div className="status" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                        {alert.status === 'active' ? (
+                                            <>
+                                                <span className="spinner" />
+                                                <span>{alert.status.toUpperCase()}</span>
+                                            </>
+                                        ) : (
+                                            alert.status.toUpperCase()
+                                        )}
+                                    </div>
+                                 </div>
+                                 <div className="entry-body">
+                                     <strong>{alert.message}</strong>
+                                     <p style={{ color: 'var(--text-secondary)' }}>{alert.aiDescription}</p>
+                                     <p>
+                                        <em>Affected:</em>{' '}
+                                        {(!alert.affectedMetrics || alert.affectedMetrics.length === 0) ? (
+                                            alert.status === 'active' ? (
+                                                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: 'var(--text-secondary)' }}><span className="spinner" />Pending...</span>
+                                            ) : (
+                                                <span style={{ color: 'var(--text-secondary)' }}>-</span>
+                                            )
+                                        ) : (
+                                            alert.affectedMetrics.join(', ')
+                                        )}
+                                    </p>
+                                     <p><em>Recommended:</em> {alert.recommendedAction}</p>
 
-                                    <div className="entry-actions">
+                                     <div className="entry-actions">
                                         {alert.status === 'active' && (
                                             <>
                                                 <button className="btn-resolve" onClick={() => onResolve(alert.id, 'Operator resolved', 'Partially mitigated')}>Mark Resolved</button>
@@ -282,3 +310,4 @@ const AlertHistoryDrawer: React.FC<Props> = ({ open, onClose, alerts, onResolve,
 };
 
 export default AlertHistoryDrawer;
+
