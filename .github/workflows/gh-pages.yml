@@ -28,7 +28,7 @@ jobs:
 
       - name: Build
         env:
-          VITE_BASE: '/Q-READY/'
+          VITE_BASE: '/q-ready/'
         run: npm run build
 
       - name: Configure Pages
