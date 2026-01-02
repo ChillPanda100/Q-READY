@@ -41,8 +41,8 @@ const App: React.FC = () => {
     const pqCooldownRef = useRef<number | null>(null);
     const [actionsHistory, setActionsHistory] = useState<ActionRecord[]>([]);
     const [dashboardActiveTab, setDashboardActiveTab] = useState<'alerts' | 'actions' | undefined>(undefined);
-    // For testing: open the final score modal immediately
-    const [finalModalOpen, setFinalModalOpen] = useState(true);
+    // Final modal flag (start closed in normal runs)
+    const [finalModalOpen, setFinalModalOpen] = useState(false);
 
     // keep ref synced so interval can read latest values without re-creating
     useEffect(() => {
@@ -694,7 +694,7 @@ const App: React.FC = () => {
 
                     <AlertsPanel alerts={alerts} onAcknowledge={acknowledgeAlert} />
 
-                    {finalModalOpen && <FinalScoreModal open={finalModalOpen} categories={finalScores.categories} totalScore={finalScores.totalScore} onPlayAgain={handlePlayAgain} onClose={() => setFinalModalOpen(false)} />}
+                    {finished && <FinalScoreModal open={finalModalOpen} categories={finalScores.categories} totalScore={finalScores.totalScore} onPlayAgain={handlePlayAgain} onClose={() => setFinalModalOpen(false)} />}
 
                     <ActionPanel onAction={performAction} inProgress={actionInProgress} system={system} authorizedEmergency={authorizedEmergency} pqOnCooldown={pqOnCooldown} onAuthorize={() => setAuthorizedEmergency(true)} />
                 </>

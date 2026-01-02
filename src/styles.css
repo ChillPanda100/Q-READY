@@ -250,6 +250,32 @@ button:hover {
     margin: 0 !important;
 }
 
+/* Close X for alert cards (top-right) */
+.alert-close-x {
+    position: absolute;
+    top: 6px;
+    right: 8px;
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 18px;
+    line-height: 1;
+    padding: 6px 8px;
+    border-radius: 8px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+.alert-close-x:hover { color: var(--text-primary); background: rgba(255,255,255,0.02); }
+.alert-close-x:focus-visible { outline: 2px solid var(--accent-focus); }
+
+/* Positioning context: make sure alert-card is positioned relative */
+.alert-card { position: relative; }
+
+/* hide the control while the alert is sliding out */
+.alert-card.closing .alert-close-x { display: none; }
+
 /* --------------------
    Score Panel
 -------------------- */
@@ -294,6 +320,10 @@ button:hover {
     padding: 18px 20px;
     box-shadow: 0 20px 60px rgba(0,0,0,0.6);
     position: relative; /* allow absolute close button */
+    display: flex;            /* ensure header/body/actions stack */
+    flex-direction: column;
+    /* ensure modal never exceeds viewport height (leave room for backdrop padding) */
+    max-height: calc(100vh - 48px);
 }
 
 .modal-close-x {
@@ -312,7 +342,7 @@ button:hover {
 
 .modal-card h2 { text-align: center; margin-bottom: 6px; }
 .modal-sub { text-align: center; color: var(--text-secondary); margin-bottom: 12px; }
-.modal-body { display:flex; flex-direction: column; gap: 12px; }
+.modal-body { display:flex; flex-direction: column; gap: 12px; overflow: auto; /* allow scrolling when content is tall */ flex: 1 1 auto; min-height: 0; max-height: calc(100vh - 180px); padding-right: 6px; }
 
 .score-row { display:flex; flex-direction: column; gap: 6px; }
 .score-row-label { display:flex; justify-content: space-between; align-items: center; }
@@ -427,11 +457,22 @@ button:hover {
     display: grid;
     grid-template-columns: repeat(5, 1fr);
     gap: 12px;
-    align-items: start;
+    /* make grid cells stretch so panels can match height */
+    align-items: stretch;
 }
 
 .action-panel-item {
     min-width: 0; /* allow shrinking */
+    /* make each grid cell a column flex container so its inner .panel can grow */
+    display: flex;
+    flex-direction: column;
+}
+
+/* Ensure the panel inside each action item fills the available height */
+.action-panel-item > .panel {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
 }
 
 /* Break into 3 columns + 2 columns (two rows) on medium/narrow screens */

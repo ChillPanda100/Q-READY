@@ -12,9 +12,10 @@ const SLIDE_MS = 260;
 const COLLAPSE_MS = 160;
 const TOTAL_MS = SLIDE_MS + COLLAPSE_MS;
 
-const AlertsPanel: React.FC<Props> = ({ alerts, onAcknowledge }) => {
+const AlertsPanel: React.FC<Props> = ({ alerts }: Props) => {
     const [closingIds, setClosingIds] = useState<number[]>([]);
     const [collapsedIds, setCollapsedIds] = useState<number[]>([]);
+    const [dismissedIds, setDismissedIds] = useState<number[]>([]);
     const timersRef = useRef<number[]>([]);
 
     useEffect(() => {
@@ -36,9 +37,12 @@ const AlertsPanel: React.FC<Props> = ({ alerts, onAcknowledge }) => {
             setCollapsedIds(prev => [...prev, id]);
         }, SLIDE_MS);
 
-        // After collapse, notify parent to remove the alert from state
+        // After collapse, mark this alert as dismissed for this view only (do NOT call onAcknowledge)
+        // so the alert remains in the alert history (parent state) unchanged.
         const t2 = window.setTimeout(() => {
-            onAcknowledge(id);
+            setDismissedIds(prev => [...prev, id]);
+            // simply remove the ids from our local tracking so the DOM entry can be
+            // fully removed from this component's render (collapsed animation finished)
             setClosingIds(prev => prev.filter(x => x !== id));
             setCollapsedIds(prev => prev.filter(x => x !== id));
         }, TOTAL_MS);
@@ -46,9 +50,11 @@ const AlertsPanel: React.FC<Props> = ({ alerts, onAcknowledge }) => {
         timersRef.current.push(t1, t2);
     };
 
+    const visible = alerts.filter(alert => !dismissedIds.includes(alert.id));
+
     return (
         <div className="alerts-container">
-            {alerts.map(alert => (
+            {visible.slice().reverse().map(alert => (
                 <div
                     key={alert.id}
                     className={`alert-card ${alert.severity} ${
@@ -59,9 +65,15 @@ const AlertsPanel: React.FC<Props> = ({ alerts, onAcknowledge }) => {
                     <p>{alert.message}</p>
                     <small>{alert.recommendedAction}</small>
 
+                    {/* replace inline Acknowledge button with a compact top-right close */}
                     {!closingIds.includes(alert.id) && (
-                        <button onClick={() => handleAcknowledge(alert.id)}>
-                            Acknowledge
+                        <button
+                            className="alert-close-x"
+                            aria-label={`Dismiss alert ${alert.id}`}
+                            title="Dismiss"
+                            onClick={() => handleAcknowledge(alert.id)}
+                        >
+                            ×
                         </button>
                     )}
                 </div>
