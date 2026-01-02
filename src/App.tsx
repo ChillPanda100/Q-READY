@@ -5,7 +5,7 @@ import type {ScenarioEvent} from './data/scenario';
 import AlertsPanel from './components/AlertsPanel';
 import ActionPanel from './components/ActionPanel';
 import StatusPanel from './components/StatusPanel.tsx';
-import ScorePanel from './components/ScorePanel';
+import FinalScoreModal from './components/FinalScoreModal';
 import MetricGraph from './components/MetricGraph';
 import type {MetricPoint, ActionRecord} from './types';
 import TitlePage from './components/TitlePage';
@@ -41,6 +41,8 @@ const App: React.FC = () => {
     const pqCooldownRef = useRef<number | null>(null);
     const [actionsHistory, setActionsHistory] = useState<ActionRecord[]>([]);
     const [dashboardActiveTab, setDashboardActiveTab] = useState<'alerts' | 'actions' | undefined>(undefined);
+    // For testing: open the final score modal immediately
+    const [finalModalOpen, setFinalModalOpen] = useState(true);
 
     // keep ref synced so interval can read latest values without re-creating
     useEffect(() => {
@@ -523,6 +525,148 @@ const App: React.FC = () => {
 
     const handleStart = () => setStarted(true);
 
+    // Compose score categories from the system state for the modal
+    // Fallback categories (shown while simulation is running) — approximate using current system state and history
+    const scoreCategories = [
+        { label: 'System Resilience (Core Outcome)', value: Math.round(system.stability) },
+        { label: 'Decision Quality & Tradeoff Management', value: Math.min(100, 50 + Math.round((actionsHistory.length || 0) * 4)) },
+        { label: 'Response Timing & Prioritization', value: 70 },
+        { label: 'Governance & Operational Discipline', value: Math.max(30, 100 - (actionsHistory.filter(a => a.action === 'authorize-emergency').length || 0) * 12) },
+    ];
+
+    // Compute detailed scoring across the 4 requested categories.
+    const computeScores = () => {
+        // recent history (not needed directly here)
+
+        // System Resilience
+        const stabilityValues = metrics.map(m => m.stability);
+        const minStability = stabilityValues.length ? Math.min(...stabilityValues) : system.stability;
+        const lastSnapshot: MetricPoint = metrics.length ? metrics[metrics.length - 1] : { time: Date.now(), stability: system.stability, trust: system.trustLevel, firmwareIntegrity: system.firmwareIntegrity, certHealth: system.certHealth, networkHealth: system.networkHealth };
+        const recoveryFactor = minStability < lastSnapshot.stability ? (lastSnapshot.stability - minStability) / Math.max(1, 100 - minStability) : 0;
+
+        let resilience: number;
+        if (minStability < 10) resilience = 10;
+        else if (minStability < 30) resilience = 40;
+        else resilience = 60 + Math.round(system.stability * 0.4);
+        resilience = Math.min(100, Math.round(resilience + recoveryFactor * 20));
+        // detect big drops (potential cascades) and penalize
+        let largeDrops = 0;
+        for (let i = 1; i < stabilityValues.length; i++) if (stabilityValues[i - 1] - stabilityValues[i] > 20) largeDrops++;
+        resilience = Math.max(0, resilience - Math.min(30, largeDrops * 8));
+
+        // Decision Quality & Tradeoff Management
+        // Reward resolving alerts with aligned actions and balanced improvements across metrics
+        const severityWeight = (a: Alert) => a.severity === 'high' ? 1.5 : a.severity === 'medium' ? 1.2 : 1.0;
+        let totalAlertWeight = 0; let matchedAlertWeight = 0;
+        alerts.forEach(a => {
+            const w = severityWeight(a); totalAlertWeight += w;
+            if (a.status === 'resolved') { matchedAlertWeight += w; return; }
+            const takenExplicit = a.actionsTaken || [];
+            const since = a.createdAt ?? 0;
+            const takenFromHistory = actionsHistory.filter(h => (h.time || 0) >= since).map(h => h.action);
+            const takenSet = Array.from(new Set([...takenExplicit, ...takenFromHistory]));
+            const actedResolve = takenSet.some(act => { if (!act) return false; try { return checkResolve(a, act); } catch { return false; } });
+            if (actedResolve) matchedAlertWeight += w;
+        });
+        const alertMatchRatio = totalAlertWeight ? (matchedAlertWeight / totalAlertWeight) : 0.7;
+
+        // Measure balance across key metrics (stability, trust, firmware, network)
+        const lastMetrics = lastSnapshot;
+        const metricMean = Math.round((lastMetrics.stability + lastMetrics.trust + lastMetrics.firmwareIntegrity + lastMetrics.networkHealth) / 4);
+        const balancePenalty = Math.abs(lastMetrics.stability - metricMean) + Math.abs(lastMetrics.trust - metricMean) + Math.abs(lastMetrics.firmwareIntegrity - metricMean) + Math.abs(lastMetrics.networkHealth - metricMean);
+        const balanceScore = Math.max(20, Math.round(100 - (balancePenalty / 4)));
+
+        const decisionQuality = Math.round(Math.min(100, (alertMatchRatio * 100) * 0.6 + balanceScore * 0.4));
+
+        // Response Timing & Prioritization
+        let avgResponseMs = 30000;
+        try {
+            const responseTimes: number[] = [];
+            alerts.forEach(a => {
+                const firstAction = actionsHistory.find(act => (a.actionsTaken || []).includes(act.action));
+                if (firstAction) responseTimes.push(firstAction.time - (a.createdAt || Date.now()));
+            });
+            if (responseTimes.length) avgResponseMs = responseTimes.reduce((s, v) => s + v, 0) / responseTimes.length;
+        } catch (err) { console.debug('computeScores: failed to compute avgResponseMs', err); }
+        let responseScore = Math.max(20, 100 - Math.min(80000, avgResponseMs) / 800);
+        // reward handling of high severity within a short window
+        const highHandledRatio = alerts.length ? alerts.filter(a => a.severity === 'high' && (actionsHistory.find(h => (a.actionsTaken || []).includes(h.action))?.time ?? Infinity) - (a.createdAt ?? 0) < 20000).length / Math.max(1, alerts.filter(a => a.severity === 'high').length) : 1;
+        responseScore = Math.round(responseScore * 0.75 + highHandledRatio * 100 * 0.25);
+
+        // Governance & Operational Discipline
+        const authorizeCount = actionsHistory.filter(a => a.action === 'authorize-emergency').length;
+        const escalateCount = actionsHistory.filter(a => a.action === 'escalate').length;
+        const ackCount = actionsHistory.filter(a => a.action === 'acknowledge-ai').length;
+        const governance = Math.max(30, 100 - Math.min(5, authorizeCount) * 12 - Math.min(10, escalateCount) * 6 + Math.min(10, ackCount * 2));
+
+        // clamp scores
+        const clamp = (v: number) => Math.max(0, Math.min(100, Math.round(v)));
+        const scores = {
+            resilience: clamp(resilience),
+            decision: clamp(decisionQuality),
+            response: clamp(responseScore),
+            governance: clamp(governance),
+        };
+
+        // weights: 5,4,3,3 -> normalized
+        const weights = { resilience: 5 / 15, decision: 4 / 15, response: 3 / 15, governance: 3 / 15 };
+        const total = Math.round(scores.resilience * weights.resilience + scores.decision * weights.decision + scores.response * weights.response + scores.governance * weights.governance);
+
+        const categories = [
+            { label: 'System Resilience (Core Outcome)', value: scores.resilience },
+            { label: 'Decision Quality & Tradeoff Management', value: scores.decision },
+            { label: 'Response Timing & Prioritization', value: scores.response },
+            { label: 'Governance & Operational Discipline', value: scores.governance },
+        ];
+
+        return { categories, totalScore: total };
+    };
+
+    // use computed scores when finished; fallback to simple categories if not finished
+    const finalScores = finished ? computeScores() : { categories: scoreCategories, totalScore: system.score };
+
+    const handlePlayAgain = () => {
+        // Close modal first
+        setFinalModalOpen(false);
+
+        // Clear timers created during actions
+        if (actionTimersRef.current && actionTimersRef.current.length) {
+            actionTimersRef.current.forEach(t => clearTimeout(t));
+            actionTimersRef.current = [];
+        }
+        if (pqCooldownRef.current) {
+            clearTimeout(pqCooldownRef.current);
+            pqCooldownRef.current = null;
+        }
+
+        // reset global counters (optional)
+        alertId = 0;
+        actionId = 0;
+
+        // reset all relevant state to initial values
+        setAlerts([]);
+        setActionsHistory([]);
+        setMetrics([]);
+        setSystem({
+            stability: 100,
+            trustLevel: 100,
+            firmwareIntegrity: 100,
+            certHealth: 100,
+            networkHealth: 100,
+            score: 0,
+        });
+        setStarted(false);
+        setFinished(false);
+        setActionInProgress({});
+        setAuthorizedEmergency(false);
+        setPqOnCooldown(false);
+    };
+
+    // open the final results modal when finished becomes true
+    useEffect(() => {
+        if (finished) setFinalModalOpen(true);
+    }, [finished]);
+
     return (
         <div className={`app ${dashboardOpen ? 'dashboard-open' : ''}`}>
             {/* top-left hamburger to toggle side dashboard */}
@@ -550,7 +694,7 @@ const App: React.FC = () => {
 
                     <AlertsPanel alerts={alerts} onAcknowledge={acknowledgeAlert} />
 
-                    {finished && <ScorePanel score={system.score} />}
+                    {finalModalOpen && <FinalScoreModal open={finalModalOpen} categories={finalScores.categories} totalScore={finalScores.totalScore} onPlayAgain={handlePlayAgain} onClose={() => setFinalModalOpen(false)} />}
 
                     <ActionPanel onAction={performAction} inProgress={actionInProgress} system={system} authorizedEmergency={authorizedEmergency} pqOnCooldown={pqOnCooldown} onAuthorize={() => setAuthorizedEmergency(true)} />
                 </>

@@ -273,6 +273,64 @@ button:hover {
     font-weight: 500;
 }
 
+/* Final score modal styles */
+.modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.6);
+    z-index: 1200;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+
+.modal-card {
+    width: 720px;
+    max-width: 100%;
+    background: linear-gradient(180deg, rgba(2,6,23,0.98), rgba(2,6,23,0.95));
+    border: 1px solid var(--border-soft);
+    border-radius: 12px;
+    padding: 18px 20px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+    position: relative; /* allow absolute close button */
+}
+
+.modal-close-x {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 20px;
+    cursor: pointer;
+    padding: 6px 8px;
+    border-radius: 8px;
+}
+.modal-close-x:hover { color: var(--text-primary); background: rgba(255,255,255,0.02); }
+
+.modal-card h2 { text-align: center; margin-bottom: 6px; }
+.modal-sub { text-align: center; color: var(--text-secondary); margin-bottom: 12px; }
+.modal-body { display:flex; flex-direction: column; gap: 12px; }
+
+.score-row { display:flex; flex-direction: column; gap: 6px; }
+.score-row-label { display:flex; justify-content: space-between; align-items: center; }
+.score-value { color: var(--text-secondary); font-weight: 600; }
+.progress { width: 100%; height: 12px; background: rgba(255,255,255,0.04); border-radius: 8px; overflow: hidden; }
+.progress-fill { height: 100%; background: linear-gradient(90deg, var(--accent-blue), var(--accent-green)); border-radius: 8px 0 0 8px; }
+
+.total-score { margin-top: 8px; display:flex; flex-direction: column; justify-content: center; align-items: center; }
+.total-score h3 { margin: 0; color: var(--text-secondary); text-align: center; }
+.total-value { font-size: 2.2rem; font-weight: 700; color: var(--accent-blue); margin-left: 0; margin-top: 6px; }
+
+.modal-actions { display:flex; gap: 10px; justify-content: center; margin-top: 14px; }
+
+@media (max-width: 760px) {
+    .modal-card { padding: 12px; }
+    .total-value { font-size: 1.6rem; }
+}
+
 /* --------------------
    Animations
 -------------------- */

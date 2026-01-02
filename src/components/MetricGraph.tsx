@@ -223,8 +223,7 @@ const MetricGraph: React.FC<Props> = ({data}) => {
                 {visibleMetrics['networkHealth'] && <path d={linePath('networkHealth')} fill="none" stroke="#60a5fa" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />}
 
                 {/* Axis labels */}
-                <text transform={`translate(${PADDING - 40}, ${HEIGHT / 2}) rotate(-90)`} fontSize={12} fill="#cbd5e1" textAnchor="middle">Percentage</text>
-                <text x={(WIDTH + PADDING) / 2} y={HEIGHT - 12} fontSize={12} fill="#cbd5e1" textAnchor="middle">Time (s)</text>
+                 <text x={(WIDTH + PADDING) / 2} y={HEIGHT - 12} fontSize={12} fill="#cbd5e1" textAnchor="middle">Time (s)</text>
 
             </svg>
 
