@@ -1,0 +1,347 @@
+
+% Design document for AI-Assisted DER Security & Grid Stability Simulation Platform
+\documentclass[11pt]{article}
+\usepackage[margin=1in]{geometry}
+\usepackage{hyperref}
+\usepackage{amsmath}
+\usepackage{enumitem}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage{caption}
+\usepackage{verbatim}
+
+\definecolor{codegray}{rgb}{0.95,0.95,0.95}
+\lstset{backgroundcolor=\color{codegray},basicstyle=\ttfamily\small,breaklines=true}
+
+\title{AI-Assisted DER Security \& Grid Stability Simulation Platform\\\small{Design Document}}
+\date{\today}
+\author{}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+This document describes the design of an interactive, AI-assisted simulation platform that trains operators to manage cybersecurity and operational incidents in distributed energy resource (DER) environments. The focus is on realistic tradeoffs: actions help some metrics and hurt others; AI suggests and explains but humans decide. The tone is practical and conversational — this is a design for engineers and operators, not a research paper.
+\end{abstract}
+
+\tableofcontents
+\vspace{1em}
+
+\section{Motivation \& Goals}
+Why build this? DERs are everywhere now, and that makes the grid more dynamic and more attackable. Operators need practice under imperfect information and with conflicting objectives (stability vs. availability vs. trust).
+
+Primary goals:
+\begin{itemize}
+  \item Simulate realistic cyber-physical incidents affecting DER-based grids.
+  \item Train operators to prioritize actions under uncertainty and partial observability.
+  \item Show the limits of autonomous remediation — AI recommends, humans act.
+  \item Visualize system health as continuously evolving metrics, not single numbers.
+  \item Provide explainable feedback so operators learn from tradeoffs.
+\end{itemize}
+
+Success criteria (how we'll know it's useful): improved operator decision-making in scenarios (measured by survivability, timeliness, and governance-aware choices), plus clear after-action traces for learning.
+
+\section{High-level System Overview}
+The platform is organized into five main layers:
+\begin{enumerate}
+  \item Simulation Engine
+  \item AI Monitoring \& Recommendation
+  \item Operator Control
+  \item Metrics \& Visualization
+  \item Governance \& Audit
+\end{enumerate}
+
+Figure: (place a component diagram here in future revisions — see Appendix for placeholders.)
+
+Data flow (short): the Simulation Engine runs time steps and emits telemetry. The AI layer consumes telemetry and raises alerts/recommendations. The Operator layer shows actions and applies them to the simulation. Metrics and the Governance layer record everything for visualization and learning.
+
+\section{Architecture \& Components}
+This section expands the five layers into concrete components.
+
+\subsection{Simulation Engine}
+Responsibilities:
+\begin{itemize}
+  \item Drive discrete time steps (e.g., 1s -- 1m depending on scenario).
+  \item Schedule scenario events (alerts, faults, supply/demand shifts).
+  \item Apply metric deltas from incidents and operator actions.
+  \item Maintain a rolling state window for history and trend calculations.
+\end{itemize}
+
+Notes:
+\begin{itemize}
+  \item Simulation should support overlapping and cascading incidents.
+  \item Devices (DER agents) are parameterized: capacity, control lag, firmware status, key/cert status.
+  \item The grid model can be linearized for speed (DC approximation) or swapped for a higher-fidelity AC model where needed.
+\end{itemize}
+
+\subsection{AI Monitoring \& Recommendation Layer}
+Responsibilities:
+\begin{itemize}
+  \item Run detectors (statistical, rule-based, lightweight classifiers).
+  \item Correlate alerts across devices and time windows.
+  \item Assign severity (low / medium / high) and calculate confidence.
+  \item Recommend actions (ranked list), with explanation and expected effects.
+\end{itemize}
+
+Crucial constraint: AI can recommend but never execute high-impact actions without operator authorization. The system intentionally avoids fully autonomous remediation.
+
+\subsection{Operator Control Layer}
+Responsibilities:
+\begin{itemize}
+  \item Present categorized actions (DER, PKI, Firmware, Network, Governance).
+  \item Enforce action preconditions and authorization (some actions locked unless escalated).
+  \item Model realistic delays, side effects, and tradeoffs when actions execute.
+  \item Log actions with timestamps, actor, parameters, and outcomes.
+\end{itemize}
+
+Action catalogue is domain-specific (see \S~\ref{sec:actions}).
+
+\subsection{Metrics \& Visualization Layer}
+Responsibilities:
+\begin{itemize}
+  \item Store time-series of key metrics (0--100\%).
+  \item Render real-time and historical views: time-series graphs, percent bars, and multi-metric overlays.
+  \item Interpolate missing data and show trend uncertainty.
+\end{itemize}
+
+Design note: prefer showing trends and tradeoffs rather than claiming instant perfection — operators should see that fixes take time and have side effects.
+
+\subsection{Governance \& Audit Layer}
+Responsibilities:
+\begin{itemize}
+  \item Track alerts, acknowledgements, actions, and final outcomes.
+  \item Keep active alerts separate from resolved incidents in the UI.
+  \item Provide an after-action review view with filters (time, severity, actor).
+\end{itemize}
+
+\section{Key System Metrics}
+Each metric is bounded between 0 and 100 (percent-like). The simulation updates metrics each timestep.
+
+Primary metrics:
+\begin{itemize}
+  \item Grid Stability: frequency control, DER coordination, reliability.
+  \item Cryptographic Trust: integrity of authentication, keys, certificates.
+  \item Firmware Integrity: authenticity, version consistency, supply-chain trust.
+  \item Certificate Health: validity, expiration, revocation, CA trust.
+  \item Network Health: latency, congestion, segmentation, routing stability.
+\end{itemize}
+
+Metrics interact: an action improving Network Health might temporarily reduce Grid Stability (e.g., isolating DERs reduces coordination), and a certificate compromise can impact trust and availability.
+
+\subsection{Metric Update Model}
+We use a simple, tunable discrete-time update per metric. For metric $m$ at time $t$:
+\[
+m_{t+1} = \operatorname{clip}\big(m_t + \Delta_{incident}(t) + \Delta_{action}(t) + w_t,\;0,\;100\big)
+\]
+where $w_t$ is small random noise to keep scenarios non-deterministic. Deltas may be negative (damage) or positive (repair). Actions apply their expected effect after modeled delays.
+
+A practical stability proxy example:
+\[
+S_t = \alpha\,|\Delta V_t| + \beta\,|\Delta f_t| + \gamma\,\text{RoCoF}_t
+\]
+Weights $(\alpha,\beta,\gamma)$ are scenario parameters.
+
+\section{Alerts \& Scenario Events}
+Alerts are time-based events with the following canonical fields (recorded in telemetry / alert store):
+\begin{lstlisting}
+{
+  "alertId": "uuid",
+  "timestamp": "ISO8601",
+  "sourceNode": "node-123",
+  "metric": "CryptographicTrust",
+  "score": 0.87,
+  "severity": "high",
+  "message": "Unexpected key rotation detected on node-123",
+  "suggestedActions": ["RotateCryptographicKeys","IsolateCompromisedDERSegment"],
+  "provenance": { "detectorId": "anomaly-v1" },
+  "metadata": { "evidence": "delta= -32 over 5m" }
+}
+\end{lstlisting}
+
+Alerts:
+\begin{itemize}
+  \item Have immediate negative impact(s) on one or more metrics.
+  \item May overlap, stack, or cascade; the engine supports those semantics.
+  \item Stay active until mitigated (by actions or governance decisions).
+\end{itemize}
+
+Lifecycle (simple state machine): Open $\to$ Acknowledged $\to$ Mitigated $\to$ Closed. Acknowledgement silences noise but does not remove effects.
+
+\section{Operator Action Model}\label{sec:actions}
+Operators use panels grouped by domain. Actions have preconditions and may require acknowledgment or escalation.
+
+Each action record contains:
+\begin{lstlisting}
+{
+  "actionId": "uuid",
+  "timestamp": "ISO8601",
+  "actor": "operator|ai",
+  "actionType": "RotateCryptographicKeys",
+  "target": "node-123",
+  "parameters": { ... },
+  "expectedEffects": { "CryptographicTrust": +20, "GridStability": -5 },
+  "preconditions": [ ... ],
+  "rollback": { ... },
+  "status": "queued|executing|done|failed"
+}
+\end{lstlisting}
+
+Representative actions (not exhaustive):
+\begin{itemize}
+  \item DER / Grid Operations: Limit DER Autonomy, Reboot DERs, Isolate Segment, Restore Autonomy.
+  \item PKI: Rotate Keys, Renew Certificates, Enforce Post-Quantum Mode.
+  \item Firmware: Apply Patch, Verify Signatures, Rollback Version.
+  \item Network: Mitigate Traffic, Segment Network, Restore Routing.
+  \item Incident Command: Escalate, Acknowledge, Authorize Emergency Actions.
+\end{itemize}
+
+\section{Action Tradeoffs \& Effects}
+Rules of thumb:
+\begin{itemize}
+  \item Every action has a vector of metric deltas and a vector of penalties (immediate or delayed).
+  \item Actions can open or close future options (e.g., revoking a CA key prevents some automated recovery).
+  \item Actions never guarantee 100\% recovery; they change trajectories.
+\end{itemize}
+
+A compact way to reason about actions is a short-horizon utility model:
+\[
+U(a) = \sum_{m} w_m \cdot \Delta_m^{(a)} - C(a)
+\]
+where $\Delta_m^{(a)}$ is the expected change of metric $m$ due to action $a$, $w_m$ are evaluation weights and $C(a)$ is the operational cost/penalty. The operator chooses actions — the AI ranks by $U(a)$ and shows tradeoffs.
+
+\section{AI vs Human Roles}
+Short version:
+\begin{itemize}
+  \item AI detects anomalies, correlates events, ranks and explains recommended actions.
+  \item Humans set priorities, authorize disruptive changes, and own accountability.
+\end{itemize}
+
+Why this split? Critical infrastructure requires human judgment and governance; the platform is designed to reflect that.
+
+\section{UI / UX Design}
+Main panels:
+\begin{itemize}
+  \item System Status: live metrics + graphs.
+  \item Action Panels: grouped by domain, with preconditions and expected effects shown.
+  \item Active Alerts: prioritized list with quick actions and explanations.
+  \item History / Audit: scrollable, filterable log for after-action review.
+\end{itemize}
+
+Alert behavior:
+\begin{itemize}
+  \item Alerts recommend actions and show confidence.
+  \item Alerts auto-resolve when metrics recover beyond thresholds.
+  \item Operators can acknowledge to reduce noise; acknowledged alerts remain in history.
+\end{itemize}
+
+\subsection{Example operator flow (short)}
+\begin{enumerate}
+  \item AI flags a "high" cryptographic trust drop on several DER nodes.
+  \item Operator reviews suggested actions: "Rotate Keys" (high impact) and "Isolate Segment" (safer, immediate).
+  \item Operator isolates the segment, which reduces CryptographicTrust loss but slightly reduces GridStability due to lost coordination.
+  \item Operator schedules key rotation and logs the decision. After metrics stabilize, alert resolves and the history shows the tradeoffs.
+\end{enumerate}
+
+\section{Learning \& Evaluation Model}
+The system evaluates operators on:
+\begin{itemize}
+  \item Response timeliness (how quickly they act).
+  \item Risk-appropriate decisions (avoiding rash but also avoiding inaction).
+  \item Avoidance of catastrophic collapse (survivability).
+  \item Quality of governance actions (proper escalation, use of acknowledgements).
+\end{itemize}
+
+Scoring is relative — the platform rewards controlled degradation and recovery rather than absolute perfection.
+
+\section{Safety, Security, and Threat Model}
+We assume a range of threats from misconfiguration to targeted key compromise. Mitigations:
+\begin{itemize}
+  \item Safe defaults: actions that could cause collapse must require explicit authorization.
+  \item Full audit trail for post-incident review.
+  \item Role-based control of sensitive actions.
+  \item Replayable scenarios for training without affecting live systems.
+\end{itemize}
+
+\section{Implementation Notes and Data Schemas}
+Storage suggestions:
+\begin{itemize}
+  \item Telemetry: time-series DB (Influx, Prometheus-like) or compressed files per scenario.
+  \item Alerts/Audit: document DB or relational store with indexes on timestamp and severity.
+\end{itemize}
+
+Example telemetry record (compact):
+\begin{lstlisting}
+{
+  "timestamp": "2026-01-02T12:00:00Z",
+  "nodeId": "node-123",
+  "metrics": {"GridStability": 72, "CryptographicTrust": 45, "NetworkHealth": 88}
+}
+\end{lstlisting}
+
+Indexing note: keep time and nodeId as primary query keys; allow range queries over time windows.
+
+\section{Algorithms (high level)}
+Detector (sketch):
+\begin{lstlisting}
+# sliding-window detector (pseudo-Python)
+window = last_n_samples(metric)
+z = (window[-1] - mean(window))/std(window)
+if z > z_threshold:
+    emit_alert(score=sigmoid(z))
+\end{lstlisting}
+
+Alert scoring (intuitive): combine anomaly z-score, severity mapping, and persistence bonus.
+
+Action ranking (sketch):
+\begin{lstlisting}
+# for each candidate action a
+U[a] = sum(w[m] * expected_delta(m, a)) - cost(a)
+rank = sorted(actions, key=U, reverse=True)
+show_top_k(rank)
+\end{lstlisting}
+
+\section{Example JSON: Alert + Action Pair}
+\begin{lstlisting}
+{
+  "alert": { "alertId": "a1", "metric": "CryptographicTrust", "severity": "high" },
+  "suggestedActions": [
+    { "actionType": "IsolateCompromisedDERSegment", "expectedEffects": {"GridStability": -10, "NetworkHealth": +15} },
+    { "actionType": "RotateCryptographicKeys", "expectedEffects": {"CryptographicTrust": +40, "Availability": -20} }
+  ]
+}
+\end{lstlisting}
+
+\section{Appendix}
+\subsection{Parameter Table}
+Include tunable parameters such as time step, noise magnitude, weights for stability proxy, and z-score thresholds. Example defaults:
+\begin{tabular}{ll}
+\toprule
+Parameter & Default \\
+\midrule
+Time step & 5s \\
+Noise scale ($w_t$) & 0.5 (percent points) \\
+Z-threshold for alerts & 3.0 \\
+Weights $(\alpha,\beta,\gamma)$ & (1.0, 1.0, 0.5) \\
+\bottomrule
+\end{tabular}
+
+\subsection{Workflows to Add Later}
+\begin{itemize}
+  \item Sequence diagram for detector → operator → action → metric update.
+  \item Small, runnable scenario scripts and sample data for onboarding.
+\end{itemize}
+
+\subsection{Assumptions}
+\begin{itemize}
+  \item Discrete-time simulation with bounded telemetry delay.
+  \item Linearized grid model is acceptable for many training scenarios.
+  \item Telemetry is time-synchronized.
+\end{itemize}
+
+\vspace{1em}
+Design summary: this platform aims to model messy reality — imperfect information, constrained choices, delayed effects, and unavoidable tradeoffs. The goal is operator learning and safe, governed responses, not perfect scores.
+
+\end{document}
+

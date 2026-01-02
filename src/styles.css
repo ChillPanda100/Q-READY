@@ -808,3 +808,4 @@ body.using-mouse *:focus {
 @media (hover: none) {
     .metric-toggle { --size: 20px; }
 }
+

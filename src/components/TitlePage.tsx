@@ -1,35 +1,70 @@
-import React, {useEffect} from 'react';
+import React from 'react';
 
 interface Props {
     onStart: () => void;
 }
 
 const TitlePage: React.FC<Props> = ({ onStart }) => {
-    useEffect(() => {
-        // diagnostic log to help verify the component is mounting
-        // remove this after debugging
-        console.log('[TitlePage] mounted');
-    }, []);
-
     return (
-        <div className="panel title-page" style={{textAlign: 'center', outline: 'none', border: '1px dashed rgba(255,255,255,0.06)'}}>
-            <h2 style={{marginBottom: 12}}>Welcome to the Q-Ready Grid Incident Simulation</h2>
+        <div
+            className="panel title-page"
+            style={{
+                textAlign: 'center',
+                outline: 'none',
+                border: '1px dashed rgba(255,255,255,0.06)',
+                padding: 22,
+            }}
+            role="region"
+            aria-label="Simulation introduction"
+        >
+            <h2 style={{ marginBottom: 12 }}>Welcome to Q-Ready</h2>
 
-            <p style={{color: 'var(--text-secondary)', marginBottom: 18}}>
-                This interactive simulation demonstrates how a power grid responds to
-                post-quantum cryptographic incidents. You'll see live system metrics,
-                alerts, and actionable controls — test your decisions and watch the
-                system evolve in real time.
+            <p style={{ color: 'var(--text-secondary)', marginBottom: 10 }}>
+                This interactive simulation trains operator decision making for
+                DER-powered grids. The system models security, firmware, network
+                and operational tradeoffs so you can practice responding to
+                realistic incidents.
             </p>
 
-            <p style={{color: 'var(--text-secondary)', marginBottom: 22}}>
-                The simulation assumes the grid has already been running for some time;
-                metrics will appear immediately and update continuously. When you're
-                ready, press Start to enter the simulation.
-            </p>
+            <div style={{ textAlign: 'left', maxWidth: 720, margin: '10px auto 18px' }}>
+                <h3 style={{ margin: '6px 0' }}>What you will see</h3>
+                <ul style={{ color: 'var(--text-secondary)', marginTop: 6 }}>
+                    <li>Live metric charts for Grid Stability, Cryptographic Trust, Firmware Integrity, Certificate Health and Network Health</li>
+                    <li>An active alerts panel with AI-generated recommendations and explanations</li>
+                    <li>Domain action panels where you can trigger operator actions that take time and may have tradeoffs</li>
+                    <li>An audit/history view that records actions, alerts and metric snapshots for after-action review</li>
+                </ul>
 
-            <div>
-                <button onClick={onStart} style={{fontSize: '1rem', padding: '10px 18px'}}>Start Simulation</button>
+                <h3 style={{ margin: '10px 0 6px' }}>How to play</h3>
+                <ol style={{ color: 'var(--text-secondary)', marginTop: 6 }}>
+                    <li>Press Start to begin the scenario.</li>
+                    <li>Watch the metric graph and alerts. AI will suggest actions and explain why.</li>
+                    <li>Choose actions from the panels - note that some actions require authorization and have cooldowns.</li>
+                    <li>Use the history drawer to review what happened after the run.</li>
+                </ol>
+
+                <h3 style={{ margin: '10px 0 6px' }}>Quick tips</h3>
+                <ul style={{ color: 'var(--text-secondary)', marginTop: 6 }}>
+                    <li>Actions take simulated time to complete - expect temporary side effects.</li>
+                    <li>AI suggestions are advisory. Read the rationale before acting.</li>
+                    <li>Look for cascading alerts - resolving one may reveal another.</li>
+                </ul>
+
+                <h3 style={{ margin: '10px 0 6px' }}>Instructor note</h3>
+                <p style={{ color: 'var(--text-secondary)', marginTop: 6 }}>
+                    For classroom runs you can edit `src/data/scenario.ts` to change
+                    event timing and effects, or enable an instructor mode to add hidden injects.
+                </p>
+            </div>
+
+            <div style={{ marginTop: 8 }}>
+                <button
+                    onClick={onStart}
+                    style={{ fontSize: '1rem', padding: '10px 18px' }}
+                    aria-label="Start simulation"
+                >
+                    Start Simulation
+                </button>
             </div>
         </div>
     );
