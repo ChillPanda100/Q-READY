@@ -47,6 +47,8 @@ const TitlePage: React.FC<Props> = ({ onStart }) => {
                 <h3 style={{ margin: '10px 0 6px' }}>Quick tips</h3>
                 <ul style={{ color: 'var(--text-secondary)', marginTop: 6 }}>
                     <li>Actions take simulated time to complete</li>
+                    <li>Hover over buttons to see how they affect each metric</li>
+                    <li>You can select which metrics you want to see on the graph</li>
                     <li>There is no single "correct" answer</li>
                     <li>Expect temporary side effects</li>
                     <li>AI suggestions are advisory</li>
