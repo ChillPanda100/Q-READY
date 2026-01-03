@@ -4,6 +4,10 @@ A compact React + TypeScript simulation that models grid stability, cryptographi
 
 This README covers how to run the project, the key features, and where to make common edits.
 
+Live demo: The simulation is also deployed and available at https://chillpanda100.github.io/Q-READY/ 
+
+You can open that URL to try the hosted version without running the app locally.
+
 ---
 
 ## Key features
@@ -42,6 +46,8 @@ npm run dev
 
 3. Open the app in the browser (Vite will print the local URL, usually http://localhost:5173).
 
+If you prefer to try the hosted demo instead of running locally, open the deployed site at: https://chillpanda100.github.io/Q-READY/.
+
 4. Use the title screen to start the simulation. The scenario timeline and alerts begin after you press Start.
 
 Notes:
@@ -78,5 +84,3 @@ npm run preview
 - `src/styles.css` — global styling, panel layout, and animation rules.
 
 ---
-
-If you'd like additional developer guidance (contributing conventions, cooldown UI, confirmation dialogs, or e2e smoke tests), tell me which item you'd like and I will add that next.
