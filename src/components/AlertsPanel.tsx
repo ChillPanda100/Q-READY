@@ -4,6 +4,8 @@ import type {Alert} from '../types';
 interface Props {
     alerts: Alert[];
     onAcknowledge: (id: number) => void;
+    // optional list of alert ids the parent wants hidden from the live alerts view
+    hiddenAlertIds?: number[];
 }
 
 // Timings are split to first slide horizontally, then collapse height so
@@ -12,7 +14,7 @@ const SLIDE_MS = 260;
 const COLLAPSE_MS = 160;
 const TOTAL_MS = SLIDE_MS + COLLAPSE_MS;
 
-const AlertsPanel: React.FC<Props> = ({ alerts }: Props) => {
+const AlertsPanel: React.FC<Props> = ({ alerts, hiddenAlertIds }: Props) => {
     const [closingIds, setClosingIds] = useState<number[]>([]);
     const [collapsedIds, setCollapsedIds] = useState<number[]>([]);
     const [dismissedIds, setDismissedIds] = useState<number[]>([]);
@@ -50,7 +52,7 @@ const AlertsPanel: React.FC<Props> = ({ alerts }: Props) => {
         timersRef.current.push(t1, t2);
     };
 
-    const visible = alerts.filter(alert => !dismissedIds.includes(alert.id));
+    const visible = alerts.filter(alert => !dismissedIds.includes(alert.id) && !( (hiddenAlertIds || []).includes(alert.id) ));
 
     return (
         <div className="alerts-container">

@@ -22,8 +22,9 @@ const TitlePage: React.FC<Props> = ({ onStart }) => {
             <p style={{ color: 'var(--text-secondary)', marginBottom: 10 }}>
                 This interactive simulation trains operator decision making for
                 DER-powered grids. The system models security, firmware, network
-                and operational tradeoffs so you can practice responding to
-                realistic incidents.
+                and operational tradeoffs, including emerging risks from quantum computing
+                that threaten widely-used public-key cryptography so you can practice responding to
+                realistic incidents where cryptography, firmware integrity, and operational resilience interact.
             </p>
 
             <div style={{ textAlign: 'left', maxWidth: 720, margin: '10px auto 18px' }}>
@@ -39,22 +40,16 @@ const TitlePage: React.FC<Props> = ({ onStart }) => {
                 <ol style={{ color: 'var(--text-secondary)', marginTop: 6 }}>
                     <li>Press Start to begin the scenario.</li>
                     <li>Watch the metric graph and alerts. AI will suggest actions and explain why.</li>
-                    <li>Choose actions from the panels - note that some actions require authorization and have cooldowns.</li>
-                    <li>Use the history drawer to review what happened after the run.</li>
+                    <li>Choose actions from the panels: note that some actions require authorization and have cooldowns.</li>
+                    <li>Use the side dashboard to view alert/action history.</li>
                 </ol>
 
                 <h3 style={{ margin: '10px 0 6px' }}>Quick tips</h3>
                 <ul style={{ color: 'var(--text-secondary)', marginTop: 6 }}>
-                    <li>Actions take simulated time to complete - expect temporary side effects.</li>
+                    <li>Actions take simulated time to complete; expect temporary side effects.</li>
                     <li>AI suggestions are advisory. Read the rationale before acting.</li>
-                    <li>Look for cascading alerts - resolving one may reveal another.</li>
+                    <li>Look for cascading alerts; resolving one may reveal another.</li>
                 </ul>
-
-                <h3 style={{ margin: '10px 0 6px' }}>Instructor note</h3>
-                <p style={{ color: 'var(--text-secondary)', marginTop: 6 }}>
-                    For classroom runs you can edit `src/data/scenario.ts` to change
-                    event timing and effects, or enable an instructor mode to add hidden injects.
-                </p>
             </div>
 
             <div style={{ marginTop: 8 }}>

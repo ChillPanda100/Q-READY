@@ -31,10 +31,22 @@
 body {
     margin: 0;
     font-family: 'Inter', system-ui, sans-serif;
-    background: radial-gradient(circle at top, #111827, var(--bg-main));
+    /* Smooth gradient from panel shade to main background to avoid visible seams */
+    background: linear-gradient(180deg, var(--bg-panel) 0%, var(--bg-main) 100%);
     color: var(--text-primary);
     line-height: 1.5;
+    min-height: 100vh;
 }
+
+/* Ensure the root element matches the body background and spans full height so there is no visible color seam */
+html, #root {
+    height: 100%;
+    /* match the page gradient so there is no visible seam at the bottom */
+    background: linear-gradient(180deg, var(--bg-panel) 0%, var(--bg-main) 100%);
+}
+
+/* Make the app container stretch to viewport height so the panel area extends fully */
+.app { min-height: 100vh; }
 
 /* --------------------
    App Layout
@@ -671,6 +683,20 @@ button:hover {
     flex: 1 1 auto;
 }
 .drawer-search-wrapper .drawer-search:focus { outline: none; }
+
+/* Force this control onto its own line below the selects while keeping DOM order.
+   Use flex-basis:100% to break the line, then align the small wrapper to the left
+   with a margin equal to select1 + gap so its right edge matches select2. */
+.drawer-controls .drawer-search-wrapper {
+    flex-basis: 100%;
+    align-self: flex-start;
+    /* align left edge with the first select (Active) and make the
+       wrapper width equal to the combined outer width of the two selects
+       plus the gap (120px + 10px + 140px) so the right edge aligns with
+       the All Metrics select. */
+    margin-left: 0;
+    width: calc(120px + 10px + 140px);
+}
 
 @media (max-width: 700px) {
     .drawer-controls { justify-content: stretch; }

@@ -40,6 +40,7 @@ const App: React.FC = () => {
     const [pqOnCooldown, setPqOnCooldown] = useState<boolean>(false);
     const pqCooldownRef = useRef<number | null>(null);
     const [actionsHistory, setActionsHistory] = useState<ActionRecord[]>([]);
+    const [hiddenAlertIds, setHiddenAlertIds] = useState<number[]>([]);
     const [dashboardActiveTab, setDashboardActiveTab] = useState<'alerts' | 'actions' | undefined>(undefined);
     // Final modal flag (start closed in normal runs)
     const [finalModalOpen, setFinalModalOpen] = useState(false);
@@ -88,14 +89,18 @@ const App: React.FC = () => {
 
                         createdAt: Date.now(),
                         status: 'active',
-                        affectedMetrics: [
-                            // infer metric from message keywords (basic heuristic)
-                            ...(event.message.toLowerCase().includes('cert') || event.message.toLowerCase().includes('certificate') || event.message.toLowerCase().includes('ca') ? ['Crypto'] : []),
-                            ...(event.message.toLowerCase().includes('firmware') || event.message.toLowerCase().includes('signature') ? ['Firmware'] : []),
-                            ...(event.message.toLowerCase().includes('network') || event.message.toLowerCase().includes('latency') ? ['Network'] : []),
-                            ...(event.message.toLowerCase().includes('der') || event.message.toLowerCase().includes('grid') ? ['Grid'] : []),
-                        ],
-                        aiDescription: `AI: ${event.message} — consider ${event.recommendedAction}`,
+                        // infer metrics more robustly from message keywords
+                        affectedMetrics: (() => {
+                            const m = event.message.toLowerCase();
+                            const res: string[] = [];
+                            if (/cert|certificate|ca|crypto|cryptographic|crypt|handshake|auth|authentication/.test(m)) res.push('Crypto');
+                            if (/firmware|signature/.test(m)) res.push('Firmware');
+                            // include control/config keywords to catch control-plane/configuration issues
+                            if (/network|latency|congestion|control(?:\s|-)?plane|control|config|configuration/.test(m)) res.push('Network');
+                             if (/der|grid/.test(m)) res.push('Grid');
+                             return res;
+                         })(),
+                          aiDescription: `AI: ${event.message} — consider ${event.recommendedAction}`,
                         actionsTaken: [],
                         metricSnapshots: [
                             {
@@ -158,7 +163,7 @@ const App: React.FC = () => {
     };
 
     const escalateAlert = (id: number, summary?: string) => {
-        setAlerts(prev => prev.map(a => a.id === id ? {...a, status: 'escalated', resolutionTimestamp: Date.now(), resolutionSummary: summary ?? 'Escalated to higher authority', actionsTaken: a.actionsTaken ?? []} : a));
+        setAlerts(prev => prev.map(a => a.id === id ? { ...a, status: 'escalated', resolutionTimestamp: Date.now(), resolutionSummary: summary ?? 'Escalated to higher authority', actionsTaken: a.actionsTaken ?? [] } : a));
     };
 
     // helper that decides whether an alert is resolved given a newly applied action and history
@@ -373,35 +378,52 @@ const App: React.FC = () => {
                 }
             ]);
 
-            // Attach this operator action to all active alerts and check for resolution/escalation
-            setAlerts(prev => prev.map(a => {
-                if (a.status !== 'active') return a;
-                const updated: Alert = {
-                    ...a,
-                    actionsTaken: [...(a.actionsTaken || []), action],
-                    metricSnapshots: [...(a.metricSnapshots || []), {
-                        time: Date.now(),
-                        stability: systemRef.current.stability,
-                        trust: systemRef.current.trustLevel,
-                        firmwareIntegrity: systemRef.current.firmwareIntegrity,
-                        certHealth: systemRef.current.certHealth,
-                        networkHealth: systemRef.current.networkHealth,
-                    }],
-                };
+            // compute mostRecentActiveId from current alerts if this is an escalate action
+            let mostRecentActiveId: number | null = null;
+            if (action === 'escalate') {
+                const currentActive = alerts.filter(x => x.status === 'active');
+                mostRecentActiveId = currentActive.length ? currentActive.slice().sort((x, y) => y.createdAt - x.createdAt)[0].id : null;
+            }
 
-                // check resolution rules
-                const resolved = checkResolve(updated, action);
-                if (resolved) {
-                    return {...updated, status: 'resolved', resolutionTimestamp: Date.now(), resolutionSummary: `Resolved by action ${action}`, confidence: 'Partially mitigated'};
-                }
+            // Attach this operator action to active alerts and check for resolution/escalation
+            setAlerts(prev => {
+                return prev.map(a => {
+                    if (a.status !== 'active') return a;
+                     const updated: Alert = {
+                         ...a,
+                         actionsTaken: [...(a.actionsTaken || []), action],
+                         metricSnapshots: [...(a.metricSnapshots || []), {
+                             time: Date.now(),
+                             stability: systemRef.current.stability,
+                             trust: systemRef.current.trustLevel,
+                             firmwareIntegrity: systemRef.current.firmwareIntegrity,
+                             certHealth: systemRef.current.certHealth,
+                             networkHealth: systemRef.current.networkHealth,
+                         }],
+                     };
 
-                // special escalate via action 'escalate' — mark escalated
-                if (action === 'escalate') {
-                    return {...updated, status: 'escalated', resolutionTimestamp: Date.now(), resolutionSummary: 'Operator escalated', confidence: 'N/A'};
-                }
+                    // check resolution rules
+                    const resolved = checkResolve(updated, action);
+                    if (resolved) {
+                        return { ...updated, status: 'resolved', resolutionTimestamp: Date.now(), resolutionSummary: `Resolved by action ${action}`, confidence: 'Partially mitigated' };
+                    }
 
-                return updated;
-            }));
+                    // special escalate via action 'escalate' — only escalate the most recent active alert
+                    if (action === 'escalate') {
+                        if (mostRecentActiveId !== null && a.id === mostRecentActiveId) {
+                            return { ...updated, status: 'escalated', resolutionTimestamp: Date.now(), resolutionSummary: 'Operator escalated', confidence: 'N/A' };
+                        }
+                        return updated;
+                    }
+
+                    return updated;
+                });
+            });
+
+            // if we escalated, hide the escalated alert from the live alerts panel
+            if (action === 'escalate' && mostRecentActiveId !== null) {
+                setHiddenAlertIds(prev => prev.includes(mostRecentActiveId as number) ? prev : [...prev, mostRecentActiveId as number]);
+            }
 
             // compute metric deltas and update the action record in history to mark success
             try {
@@ -692,7 +714,7 @@ const App: React.FC = () => {
                         <StatusPanel system={system} />
                     </div>
 
-                    <AlertsPanel alerts={alerts} onAcknowledge={acknowledgeAlert} />
+                    <AlertsPanel alerts={alerts} onAcknowledge={acknowledgeAlert} hiddenAlertIds={hiddenAlertIds} />
 
                     {finished && <FinalScoreModal open={finalModalOpen} categories={finalScores.categories} totalScore={finalScores.totalScore} onPlayAgain={handlePlayAgain} onClose={() => setFinalModalOpen(false)} />}
 
