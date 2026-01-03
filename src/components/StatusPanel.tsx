@@ -33,7 +33,7 @@ const StatusPanel: React.FC<{ system: SystemState }> = ({ system }) => (
 
             <p style={{marginTop:8}}>Network Health: {system.networkHealth}%</p>
             <div style={{background: 'rgba(255,255,255,0.04)', borderRadius: 6, overflow: 'hidden', width: '100%', height: 10}}>
-                <div style={bar(system.networkHealth, '#60a5fa')} />
+                <div style={bar(system.networkHealth, '#a78bfa')} />
             </div>
         </div>
     </div>

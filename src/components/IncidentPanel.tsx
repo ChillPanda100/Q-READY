@@ -28,7 +28,6 @@ const IncidentPanel: React.FC<Props> = ({ onAction, inProgress = {}, authorizedE
             <h3 style={{marginTop:0}}>Incident Command & Governance</h3>
             <div className="panel-buttons">
                 {btn('escalate', 'Escalate Incident', { title: 'Escalation: no direct metric change' })}
-                {btn('acknowledge-ai', 'Acknowledge AI Alert', { title: 'Acknowledge and reduce alert pressure' })}
                 {onAuthorize ? (
                     <button onClick={() => onAuthorize()} title="Authorize emergency actions">{authorizedEmergency ? 'Emergency Authorized' : 'Authorize Emergency Actions'}</button>
                 ) : (

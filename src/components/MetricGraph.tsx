@@ -63,7 +63,8 @@ const MetricGraph: React.FC<Props> = ({data}) => {
         { key: 'trust', label: 'Cryptographic Trust', color: '#22c55e' },
         { key: 'firmwareIntegrity', label: 'Firmware Integrity', color: '#f59e0b' },
         { key: 'certHealth', label: 'Certificate Health', color: '#ef4444' },
-        { key: 'networkHealth', label: 'Network Health', color: '#60a5fa' },
+        // using a light purple for network health to distinguish it from other blues
+        { key: 'networkHealth', label: 'Network Health', color: '#a78bfa' },
     ];
 
     const [visibleMetrics, setVisibleMetrics] = useState<Record<MetricKey, boolean>>(() => {
@@ -220,7 +221,7 @@ const MetricGraph: React.FC<Props> = ({data}) => {
                 {visibleMetrics['trust'] && <path d={linePath('trust')} fill="none" stroke="#22c55e" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />}
                 {visibleMetrics['firmwareIntegrity'] && <path d={linePath('firmwareIntegrity')} fill="none" stroke="#f59e0b" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />}
                 {visibleMetrics['certHealth'] && <path d={linePath('certHealth')} fill="none" stroke="#ef4444" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />}
-                {visibleMetrics['networkHealth'] && <path d={linePath('networkHealth')} fill="none" stroke="#60a5fa" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />}
+                {visibleMetrics['networkHealth'] && <path d={linePath('networkHealth')} fill="none" stroke="#a78bfa" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />}
 
                 {/* Axis labels */}
                  <text x={(WIDTH + PADDING) / 2} y={HEIGHT - 12} fontSize={12} fill="#cbd5e1" textAnchor="middle">Time (s)</text>

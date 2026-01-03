@@ -12,7 +12,7 @@ interface Props {
 
 const AlertHistoryDrawer: React.FC<Props> = ({ open, onClose, alerts, onResolve, onEscalate, embedded = false }) => {
     // default status filter when embedded should show active alerts first
-    const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'resolved' | 'escalated' | 'unresolved'>(() => embedded ? 'active' : 'all');
+    const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'resolved' | 'escalated'>(() => embedded ? 'active' : 'all');
     const [filterMetric, setFilterMetric] = useState<'all' | 'Grid' | 'Crypto' | 'Firmware' | 'Network'>('all');
     const [search, setSearch] = useState('');
 
@@ -149,7 +149,7 @@ const AlertHistoryDrawer: React.FC<Props> = ({ open, onClose, alerts, onResolve,
                     {/* compact row: two modern-looking selects and the search input aligned on the same line */}
                     <select
                         value={filterStatus}
-                        onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setFilterStatus(e.target.value as 'all' | 'active' | 'resolved' | 'escalated' | 'unresolved')}
+                        onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setFilterStatus(e.target.value as 'all' | 'active' | 'resolved' | 'escalated')}
                         style={{
                             padding: '6px 10px',
                             borderRadius: 8,
@@ -165,7 +165,6 @@ const AlertHistoryDrawer: React.FC<Props> = ({ open, onClose, alerts, onResolve,
                         <option value="active">Active</option>
                         <option value="resolved">Resolved</option>
                         <option value="escalated">Escalated</option>
-                        <option value="unresolved">Unresolved</option>
                     </select>
 
                     <select

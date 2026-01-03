@@ -145,7 +145,10 @@ const App: React.FC = () => {
             timers.push(id);
         });
 
-        const finishId = window.setTimeout(() => setFinished(true), 150000); // finish after 150s
+        // finish the simulation at (latest scenario event time + 10s)
+        const latestEvent = scenarioEvents.reduce((m, e) => Math.max(m, e.time || 0), 0);
+        const finishDelay = Math.max(0, latestEvent + 10000);
+        const finishId = window.setTimeout(() => setFinished(true), finishDelay);
         timers.push(finishId);
 
         // capture current action timers so cleanup can clear them too
@@ -560,24 +563,37 @@ const App: React.FC = () => {
     const computeScores = () => {
         // recent history (not needed directly here)
 
-        // System Resilience
+        // If the operator took no actions at all, they earn zero in every category.
+        // This enforces that points must be earned through operator activity.
+        if (!actionsHistory || actionsHistory.length === 0) {
+            const categories = [
+                { label: 'System Resilience (Core Outcome)', value: 0 },
+                { label: 'Decision Quality & Tradeoff Management', value: 0 },
+                { label: 'Response Timing & Prioritization', value: 0 },
+                { label: 'Governance & Operational Discipline', value: 0 },
+            ];
+            return { categories, totalScore: 0 };
+        }
+
+        // System Resilience (stricter)
         const stabilityValues = metrics.map(m => m.stability);
         const minStability = stabilityValues.length ? Math.min(...stabilityValues) : system.stability;
         const lastSnapshot: MetricPoint = metrics.length ? metrics[metrics.length - 1] : { time: Date.now(), stability: system.stability, trust: system.trustLevel, firmwareIntegrity: system.firmwareIntegrity, certHealth: system.certHealth, networkHealth: system.networkHealth };
         const recoveryFactor = minStability < lastSnapshot.stability ? (lastSnapshot.stability - minStability) / Math.max(1, 100 - minStability) : 0;
 
         let resilience: number;
-        if (minStability < 10) resilience = 10;
-        else if (minStability < 30) resilience = 40;
-        else resilience = 60 + Math.round(system.stability * 0.4);
-        resilience = Math.min(100, Math.round(resilience + recoveryFactor * 20));
-        // detect big drops (potential cascades) and penalize
+        // More conservative thresholds and smaller bonus from current stability
+        if (minStability < 10) resilience = 8;
+        else if (minStability < 30) resilience = 28;
+        else resilience = 50 + Math.round(system.stability * 0.3);
+        // reduce the impact of recovery factor so quick recoveries don't over-inflate the score
+        resilience = Math.min(100, Math.round(resilience + recoveryFactor * 12));
+        // detect big drops (potential cascades) and penalize more heavily
         let largeDrops = 0;
         for (let i = 1; i < stabilityValues.length; i++) if (stabilityValues[i - 1] - stabilityValues[i] > 20) largeDrops++;
-        resilience = Math.max(0, resilience - Math.min(30, largeDrops * 8));
+        resilience = Math.max(0, resilience - Math.min(40, largeDrops * 12));
 
-        // Decision Quality & Tradeoff Management
-        // Reward resolving alerts with aligned actions and balanced improvements across metrics
+        // Decision Quality & Tradeoff Management (harsher)
         const severityWeight = (a: Alert) => a.severity === 'high' ? 1.5 : a.severity === 'medium' ? 1.2 : 1.0;
         let totalAlertWeight = 0; let matchedAlertWeight = 0;
         alerts.forEach(a => {
@@ -590,18 +606,20 @@ const App: React.FC = () => {
             const actedResolve = takenSet.some(act => { if (!act) return false; try { return checkResolve(a, act); } catch { return false; } });
             if (actedResolve) matchedAlertWeight += w;
         });
-        const alertMatchRatio = totalAlertWeight ? (matchedAlertWeight / totalAlertWeight) : 0.7;
+        const alertMatchRatio = totalAlertWeight ? (matchedAlertWeight / totalAlertWeight) : 0.5; // stricter default
 
         // Measure balance across key metrics (stability, trust, firmware, network)
         const lastMetrics = lastSnapshot;
         const metricMean = Math.round((lastMetrics.stability + lastMetrics.trust + lastMetrics.firmwareIntegrity + lastMetrics.networkHealth) / 4);
         const balancePenalty = Math.abs(lastMetrics.stability - metricMean) + Math.abs(lastMetrics.trust - metricMean) + Math.abs(lastMetrics.firmwareIntegrity - metricMean) + Math.abs(lastMetrics.networkHealth - metricMean);
-        const balanceScore = Math.max(20, Math.round(100 - (balancePenalty / 4)));
+        // make balance scoring harsher (bigger penalty)
+        const balanceScore = Math.max(10, Math.round(100 - (balancePenalty / 3)));
 
-        const decisionQuality = Math.round(Math.min(100, (alertMatchRatio * 100) * 0.6 + balanceScore * 0.4));
+        // combine with heavier weight on alert-match
+        const decisionQuality = Math.round(Math.min(100, (alertMatchRatio * 100) * 0.65 + balanceScore * 0.35));
 
-        // Response Timing & Prioritization
-        let avgResponseMs = 30000;
+        // Response Timing & Prioritization (harsher timings)
+        let avgResponseMs = 45000; // assume slower by default
         try {
             const responseTimes: number[] = [];
             alerts.forEach(a => {
@@ -610,16 +628,30 @@ const App: React.FC = () => {
             });
             if (responseTimes.length) avgResponseMs = responseTimes.reduce((s, v) => s + v, 0) / responseTimes.length;
         } catch (err) { console.debug('computeScores: failed to compute avgResponseMs', err); }
-        let responseScore = Math.max(20, 100 - Math.min(80000, avgResponseMs) / 800);
-        // reward handling of high severity within a short window
-        const highHandledRatio = alerts.length ? alerts.filter(a => a.severity === 'high' && (actionsHistory.find(h => (a.actionsTaken || []).includes(h.action))?.time ?? Infinity) - (a.createdAt ?? 0) < 20000).length / Math.max(1, alerts.filter(a => a.severity === 'high').length) : 1;
-        responseScore = Math.round(responseScore * 0.75 + highHandledRatio * 100 * 0.25);
+        // penalize slower responses more aggressively (smaller divisor)
+        let responseScore = Math.max(10, 100 - Math.min(120000, avgResponseMs) / 600);
+        // reward handling of high severity within a short window but with reduced weight
+        const highHandledRatio = alerts.length ? alerts.filter(a => a.severity === 'high' && (actionsHistory.find(h => (a.actionsTaken || []).includes(h.action))?.time ?? Infinity) - (a.createdAt ?? 0) < 15000).length / Math.max(1, alerts.filter(a => a.severity === 'high').length) : 0;
+        responseScore = Math.round(responseScore * 0.8 + highHandledRatio * 100 * 0.2);
 
-        // Governance & Operational Discipline
+        // Governance & Operational Discipline (reworked)
         const authorizeCount = actionsHistory.filter(a => a.action === 'authorize-emergency').length;
         const escalateCount = actionsHistory.filter(a => a.action === 'escalate').length;
         const ackCount = actionsHistory.filter(a => a.action === 'acknowledge-ai').length;
-        const governance = Math.max(30, 100 - Math.min(5, authorizeCount) * 12 - Math.min(10, escalateCount) * 6 + Math.min(10, ackCount * 2));
+        const totalActions = actionsHistory.length || 0;
+
+        // Baseline is intentionally low when no operator activity occurred. Governance is earned by appropriate actions,
+        // but severely penalizes emergency authorizations and excessive escalations.
+        let governance = 30;
+        // small bonus for being active (encourages measured engagement)
+        governance += Math.min(30, totalActions * 2);
+        // reward sensible acknowledgements a little (but do not over-reward)
+        governance += Math.min(8, ackCount * 2);
+        // heavy penalties for emergency authorizations and escalations (can quickly reduce governance)
+        governance -= Math.min(72, authorizeCount * 12);
+        governance -= Math.min(36, escalateCount * 6);
+        // clamp
+        governance = Math.max(0, Math.min(100, Math.round(governance)));
 
         // clamp scores
         const clamp = (v: number) => Math.max(0, Math.min(100, Math.round(v)));
@@ -707,7 +739,7 @@ const App: React.FC = () => {
                 <TitlePage onStart={handleStart} />
             ) : (
                 <>
-                    <h1 style={{textAlign: 'center', marginBottom: 20}}>Q-Ready: Post-Quantum Grid Incident Simulation</h1>
+                    <h1 style={{textAlign: 'center', marginBottom: 20}}>Q-READY: Post-Quantum Grid Incident Simulation</h1>
 
                     <div className="grid-row">
                         <MetricGraph data={metrics} />

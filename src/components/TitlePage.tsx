@@ -17,13 +17,13 @@ const TitlePage: React.FC<Props> = ({ onStart }) => {
             role="region"
             aria-label="Simulation introduction"
         >
-            <h2 style={{ marginBottom: 12 }}>Welcome to Q-Ready</h2>
+            <h2 style={{ marginBottom: 12 }}>Welcome to Q-READY</h2>
 
             <p style={{ color: 'var(--text-secondary)', marginBottom: 10 }}>
                 This interactive simulation trains operator decision making for
                 DER-powered grids. The system models security, firmware, network
                 and operational tradeoffs, including emerging risks from quantum computing
-                that threaten widely-used public-key cryptography so you can practice responding to
+                that threaten widely used public-key cryptography so you can practice responding to
                 realistic incidents where cryptography, firmware integrity, and operational resilience interact.
             </p>
 
@@ -33,22 +33,24 @@ const TitlePage: React.FC<Props> = ({ onStart }) => {
                     <li>Live metric charts for Grid Stability, Cryptographic Trust, Firmware Integrity, Certificate Health and Network Health</li>
                     <li>An active alerts panel with AI-generated recommendations and explanations</li>
                     <li>Domain action panels where you can trigger operator actions that take time and may have tradeoffs</li>
-                    <li>An audit/history view that records actions, alerts and metric snapshots for after-action review</li>
+                    <li>An audit/history view that records actions, alerts and metric snapshots for review</li>
                 </ul>
 
                 <h3 style={{ margin: '10px 0 6px' }}>How to play</h3>
                 <ol style={{ color: 'var(--text-secondary)', marginTop: 6 }}>
-                    <li>Press Start to begin the scenario.</li>
-                    <li>Watch the metric graph and alerts. AI will suggest actions and explain why.</li>
-                    <li>Choose actions from the panels: note that some actions require authorization and have cooldowns.</li>
-                    <li>Use the side dashboard to view alert/action history.</li>
+                    <li>Press Start to begin the simulation</li>
+                    <li>Watch the metric graph and alerts. AI will suggest actions and explain why</li>
+                    <li>Choose actions from the panels: note that some actions require authorization and have cooldowns</li>
+                    <li>Use the side dashboard to view alert/action history</li>
                 </ol>
 
                 <h3 style={{ margin: '10px 0 6px' }}>Quick tips</h3>
                 <ul style={{ color: 'var(--text-secondary)', marginTop: 6 }}>
-                    <li>Actions take simulated time to complete; expect temporary side effects.</li>
-                    <li>AI suggestions are advisory. Read the rationale before acting.</li>
-                    <li>Look for cascading alerts; resolving one may reveal another.</li>
+                    <li>Actions take simulated time to complete</li>
+                    <li>There is no single "correct" answer</li>
+                    <li>Expect temporary side effects</li>
+                    <li>AI suggestions are advisory</li>
+                    <li>Watch out for cascading alerts!</li>
                 </ul>
             </div>
 
